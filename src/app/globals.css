@@ -1331,6 +1331,20 @@ input {
   width: 2rem;
   height: 2rem;
   border: 1px solid rgba(249, 244, 234, 0.2);
+  border-radius: 999px;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.footer-socials a:hover {
+  background: rgba(249, 244, 234, 0.08);
+  border-color: rgba(249, 244, 234, 0.4);
+  transform: translateY(-1px);
+}
+
+.footer-socials svg {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
 }
 
 .footer-column h3 {

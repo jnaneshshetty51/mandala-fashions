@@ -48,7 +48,7 @@ export default async function AdminProductsPage({
     inventoryCount: p.inventoryCount,
     status: p.status as string,
     variants: p.variants.length,
-    fabric: p.fabric ?? "Unassigned"
+    material: p.fabric ?? "Unassigned"
   }));
 
   const allProducts = await prisma.product.findMany({
@@ -95,7 +95,7 @@ export default async function AdminProductsPage({
           <div className="admin-card-header">
             <div>
               <h2>Create Product</h2>
-              <p>Add a new catalog item that becomes available in the storefront and checkout flow.</p>
+              <p>Enter products using your inventory sheet fields and publish them directly to the storefront.</p>
             </div>
           </div>
           <ProductCreateForm />
@@ -105,9 +105,9 @@ export default async function AdminProductsPage({
           <h2>Publishing Notes</h2>
           <p>New products are created as active storefront items.</p>
           <div className="guide-link-list">
-            <span>Slug and SKU are generated automatically.</span>
-            <span>Use image URLs now; upload workflow can be layered in after.</span>
-            <span>Inventory count controls store availability and checkout usage.</span>
+            <span>Fields now follow: Category, Material, Type, Variant, Description, Length, Colors, Price, SKU, Qty.</span>
+            <span>Slug is generated automatically from Type and Variant.</span>
+            <span>Qty controls store availability and checkout usage.</span>
           </div>
         </article>
       </section>
@@ -162,9 +162,9 @@ export default async function AdminProductsPage({
           <div className="admin-table-head admin-table-head-products">
             <span>Product</span>
             <span>SKU</span>
-            <span>Fabric</span>
+            <span>Material</span>
             <span>Variants</span>
-            <span>Stock</span>
+            <span>Qty</span>
             <span>Status</span>
             <span>Price</span>
             <span>Actions</span>
@@ -175,7 +175,7 @@ export default async function AdminProductsPage({
                 <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
               </strong>
               <span>{product.sku}</span>
-              <span>{product.fabric}</span>
+              <span>{product.material}</span>
               <span>{product.variants}</span>
               <span>{product.inventoryCount}</span>
               <em className={`status-${product.status.toLowerCase()}`}>{product.status}</em>

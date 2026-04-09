@@ -57,17 +57,13 @@ export default async function AdminProductDetailPage({
         <article className="admin-metric-card">
           <p>Price</p>
           <h2>{formatCurrency(price)}</h2>
-          {compareAtPrice ? (
-            <span className="admin-delta neutral">Compare at {formatCurrency(compareAtPrice)}</span>
-          ) : (
-            <span className="admin-delta neutral">No compare price set</span>
-          )}
+          <span className="admin-delta neutral">SKU: {product.sku}</span>
         </article>
         <article className="admin-metric-card">
-          <p>Inventory</p>
+          <p>Qty</p>
           <h2>{product.inventoryCount}</h2>
           <span className={`admin-delta ${product.inventoryCount > 0 ? "positive" : "negative"}`}>
-            {product.inventoryCount > 0 ? "In stock" : "Out of stock"}
+            {product.inventoryCount > 0 ? "Available" : "Out of stock"}
           </span>
         </article>
         <article className="admin-metric-card">
@@ -89,24 +85,37 @@ export default async function AdminProductDetailPage({
           </div>
 
           <div style={{ padding: "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {product.description ? (
+            {product.occasion ? (
               <p>
-                <strong>Description:</strong> {product.description}
+                <strong>Category:</strong> {product.occasion}
               </p>
             ) : null}
             {product.fabric ? (
               <p>
-                <strong>Fabric:</strong> {product.fabric}
+                <strong>Material:</strong> {product.fabric}
               </p>
             ) : null}
-            {product.occasion ? (
+            <p>
+              <strong>Type:</strong> {product.name.split(" - ")[0]}
+            </p>
+            {product.name.includes(" - ") ? (
               <p>
-                <strong>Occasion:</strong> {product.occasion}
+                <strong>Variant:</strong> {product.name.split(" - ").slice(1).join(" - ")}
+              </p>
+            ) : null}
+            {product.description ? (
+              <p>
+                <strong>Description:</strong> {product.description.replace(/\n\nLength:\s*.+$/, "")}
+              </p>
+            ) : null}
+            {product.description.match(/\n\nLength:\s*(.+)$/)?.[1] ? (
+              <p>
+                <strong>Length:</strong> {product.description.match(/\n\nLength:\s*(.+)$/)?.[1]}
               </p>
             ) : null}
             {product.color ? (
               <p>
-                <strong>Color:</strong> {product.color}
+                <strong>Colors:</strong> {product.color}
               </p>
             ) : null}
             {product.imageUrl ? (
@@ -123,7 +132,8 @@ export default async function AdminProductDetailPage({
         <article className="admin-growth-card">
           <h2>Quick Info</h2>
           <div className="guide-link-list">
-            <span>Slug and SKU are read-only; they were generated at creation time.</span>
+            <span>Slug is generated automatically from Type and Variant.</span>
+            <span>SKU can be set directly to match your inventory sheet.</span>
             <span>Changing status to Archived removes the product from the storefront.</span>
             <span>Use inventory adjustment for stock corrections rather than direct edits.</span>
           </div>
@@ -140,15 +150,17 @@ export default async function AdminProductDetailPage({
         <ProductEditForm
           product={{
             id: product.id,
-            name: product.name,
-            description: product.description,
+            category: product.occasion,
+            material: product.fabric,
+            type: product.name.split(" - ")[0],
+            variant: product.name.split(" - ").slice(1).join(" - "),
+            description: product.description.replace(/\n\nLength:\s*.+$/, ""),
+            length: product.description.match(/\n\nLength:\s*(.+)$/)?.[1] ?? "",
+            colors: product.color,
             price,
-            compareAtPrice,
-            inventoryCount: product.inventoryCount,
+            sku: product.sku,
+            qty: product.inventoryCount,
             imageUrl: product.imageUrl,
-            fabric: product.fabric,
-            occasion: product.occasion,
-            color: product.color,
             status: product.status as "DRAFT" | "ACTIVE" | "ARCHIVED"
           }}
         />

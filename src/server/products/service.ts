@@ -1,17 +1,55 @@
 import { prisma } from "@/server/db";
 
 type UpdateProductInput = {
-  name?: string;
+  category?: string;
+  material?: string;
+  type?: string;
+  variant?: string;
   description?: string;
+  length?: string;
+  colors?: string;
   price?: number;
-  compareAtPrice?: number;
+  sku?: string;
   imageUrl?: string;
-  fabric?: string;
-  occasion?: string;
-  color?: string;
-  inventoryCount?: number;
+  qty?: number;
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
 };
+
+function composeProductName(type: string, variant?: string) {
+  const cleanType = type.trim();
+  const cleanVariant = variant?.trim();
+  return cleanVariant ? `${cleanType} - ${cleanVariant}` : cleanType;
+}
+
+function splitProductName(name: string) {
+  const [type, ...rest] = name.split(" - ");
+  return {
+    type: type.trim(),
+    variant: rest.join(" - ").trim()
+  };
+}
+
+function composeProductDescription(description: string, length?: string) {
+  const cleanDescription = description.trim();
+  const cleanLength = length?.trim();
+  return cleanLength ? `${cleanDescription}\n\nLength: ${cleanLength}` : cleanDescription;
+}
+
+function splitProductDescription(description: string) {
+  const match = description.match(/\n\nLength:\s*(.+)$/);
+
+  if (!match) {
+    return {
+      description: description.trim(),
+      length: ""
+    };
+  }
+
+  return {
+    description: description.replace(/\n\nLength:\s*.+$/, "").trim(),
+    length: match[1]?.trim() ?? ""
+  };
+}
 
 export async function getAdminProduct(id: string) {
   const product = await prisma.product.findUnique({
@@ -21,32 +59,73 @@ export async function getAdminProduct(id: string) {
 
   if (!product) return null;
 
+  const nameParts = splitProductName(product.name);
+  const descriptionParts = splitProductDescription(product.description);
+
   return {
     ...product,
+    category: product.occasion,
+    material: product.fabric,
+    type: nameParts.type,
+    variant: nameParts.variant,
+    description: descriptionParts.description,
+    length: descriptionParts.length,
+    colors: product.color,
+    qty: product.inventoryCount,
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput) {
+  const existing = await prisma.product.findUnique({
+    where: { id }
+  });
+
+  if (!existing) {
+    throw new Error("Product not found.");
+  }
+
+  const existingNameParts = splitProductName(existing.name);
+  const existingDescriptionParts = splitProductDescription(existing.description);
+  const nextType = input.type ?? existingNameParts.type;
+  const nextVariant = input.variant ?? existingNameParts.variant;
+  const nextDescription = input.description ?? existingDescriptionParts.description;
+  const nextLength = input.length ?? existingDescriptionParts.length;
+
   const product = await prisma.product.update({
     where: { id },
     data: {
-      ...(input.name !== undefined && { name: input.name }),
-      ...(input.description !== undefined && { description: input.description }),
+      ...((input.type !== undefined || input.variant !== undefined) && {
+        name: composeProductName(nextType, nextVariant)
+      }),
+      ...((input.description !== undefined || input.length !== undefined) && {
+        description: composeProductDescription(nextDescription, nextLength)
+      }),
       ...(input.price !== undefined && { price: input.price }),
-      ...(input.compareAtPrice !== undefined && { compareAtPrice: input.compareAtPrice }),
+      ...(input.sku !== undefined && { sku: input.sku.trim() }),
       ...(input.imageUrl !== undefined && { imageUrl: input.imageUrl }),
-      ...(input.fabric !== undefined && { fabric: input.fabric }),
-      ...(input.occasion !== undefined && { occasion: input.occasion }),
-      ...(input.color !== undefined && { color: input.color }),
-      ...(input.inventoryCount !== undefined && { inventoryCount: input.inventoryCount }),
+      ...(input.material !== undefined && { fabric: input.material.trim() }),
+      ...(input.category !== undefined && { occasion: input.category.trim() }),
+      ...(input.colors !== undefined && { color: input.colors.trim() }),
+      ...(input.qty !== undefined && { inventoryCount: input.qty }),
       ...(input.status !== undefined && { status: input.status })
     }
   });
 
+  const nameParts = splitProductName(product.name);
+  const descriptionParts = splitProductDescription(product.description);
+
   return {
     ...product,
+    category: product.occasion,
+    material: product.fabric,
+    type: nameParts.type,
+    variant: nameParts.variant,
+    description: descriptionParts.description,
+    length: descriptionParts.length,
+    colors: product.color,
+    qty: product.inventoryCount,
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };
@@ -83,15 +162,17 @@ export async function adjustInventory(id: string, delta: number) {
 }
 
 type CreateProductInput = {
-  name: string;
+  category: string;
+  material: string;
+  type: string;
+  variant?: string;
   description: string;
+  length?: string;
+  colors?: string;
   price: number;
+  sku: string;
   imageUrl?: string;
-  fabric?: string;
-  occasion?: string;
-  color?: string;
-  compareAtPrice?: number;
-  inventoryCount?: number;
+  qty?: number;
 };
 
 export async function listProducts() {
@@ -183,7 +264,10 @@ export async function bulkImportProducts(rows: BulkImportRow[]) {
 }
 
 export async function createProduct(input: CreateProductInput) {
-  const baseSlug = input.name
+  const name = composeProductName(input.type, input.variant);
+  const description = composeProductDescription(input.description, input.length);
+
+  const baseSlug = name
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
@@ -201,23 +285,33 @@ export async function createProduct(input: CreateProductInput) {
 
   const product = await prisma.product.create({
     data: {
-      name: input.name,
+      name,
       slug,
-      sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 90 + 10)}`,
-      description: input.description,
+      sku: input.sku.trim(),
+      description,
       price: input.price,
-      compareAtPrice: input.compareAtPrice,
       imageUrl: input.imageUrl,
-      fabric: input.fabric,
-      occasion: input.occasion,
-      color: input.color,
-      inventoryCount: input.inventoryCount ?? 0,
+      fabric: input.material.trim(),
+      occasion: input.category.trim(),
+      color: input.colors?.trim(),
+      inventoryCount: input.qty ?? 0,
       status: "ACTIVE"
     }
   });
 
+  const nameParts = splitProductName(product.name);
+  const descriptionParts = splitProductDescription(product.description);
+
   return {
     ...product,
+    category: product.occasion,
+    material: product.fabric,
+    type: nameParts.type,
+    variant: nameParts.variant,
+    description: descriptionParts.description,
+    length: descriptionParts.length,
+    colors: product.color,
+    qty: product.inventoryCount,
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };

@@ -67,15 +67,17 @@ const upload = multer({
 });
 
 const productSchema = z.object({
-  name: z.string().min(2),
+  category: z.string().min(2),
+  material: z.string().min(2),
+  type: z.string().min(2),
+  variant: z.string().optional(),
   description: z.string().min(10),
+  length: z.string().optional(),
+  colors: z.string().optional(),
   price: z.coerce.number().positive(),
-  compareAtPrice: z.coerce.number().positive().optional(),
-  inventoryCount: z.coerce.number().int().min(0).optional(),
+  sku: z.string().min(2),
+  qty: z.coerce.number().int().min(0).optional(),
   imageUrl: z.string().url().optional(),
-  fabric: z.string().min(2).optional(),
-  occasion: z.string().min(2).optional(),
-  color: z.string().min(2).optional()
 });
 
 const orderSchema = z.object({

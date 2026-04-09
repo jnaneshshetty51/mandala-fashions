@@ -21,15 +21,17 @@ function asyncHandler(
 
 const updateProductSchema = z
   .object({
-    name: z.string().min(1).optional(),
+    category: z.string().min(1).optional(),
+    material: z.string().min(1).optional(),
+    type: z.string().min(1).optional(),
+    variant: z.string().optional(),
     description: z.string().min(1).optional(),
+    length: z.string().optional(),
+    colors: z.string().optional(),
     price: z.number().positive().optional(),
-    compareAtPrice: z.number().positive().optional(),
+    sku: z.string().min(1).optional(),
     imageUrl: z.string().url().optional(),
-    fabric: z.string().optional(),
-    occasion: z.string().optional(),
-    color: z.string().optional(),
-    inventoryCount: z.number().int().min(0).optional(),
+    qty: z.number().int().min(0).optional(),
     status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
   })
   .refine((data) => Object.keys(data).length > 0, {
