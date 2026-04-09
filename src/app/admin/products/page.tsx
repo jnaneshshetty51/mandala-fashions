@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AdminLayout } from "@/components/admin/admin-layout";
+import { BulkImportForm } from "@/components/admin/bulk-import-form";
 import { ProductCreateForm } from "@/components/admin/product-create-form";
 import { requirePageRole } from "@/server/auth/guards";
 import { prisma } from "@/server/db";
@@ -110,6 +111,19 @@ export default async function AdminProductsPage({
           </div>
         </article>
       </section>
+
+      <article className="admin-table-card">
+        <div className="admin-card-header">
+          <div>
+            <h2>Bulk Import from Excel</h2>
+            <p>
+              Export your Excel sheet as CSV and upload here. Columns:{" "}
+              <strong>Category, Material, Type, Variant, Description, Length, Colors, Price, SKU, Qty</strong>.
+            </p>
+          </div>
+        </div>
+        <BulkImportForm />
+      </article>
 
       <article className="admin-table-card">
         <div className="admin-card-header">

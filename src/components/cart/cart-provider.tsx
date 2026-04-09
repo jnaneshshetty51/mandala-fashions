@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 export type CartItem = {
+  cartKey: string;
   productId?: string;
   slug: string;
   name: string;
@@ -10,6 +11,8 @@ export type CartItem = {
   unitPrice: number;
   artClass: string;
   label: string;
+  selectedColor?: string;
+  selectedVariantName?: string;
   quantity: number;
 };
 
@@ -17,7 +20,7 @@ type CartContextValue = {
   items: CartItem[];
   itemCount: number;
   addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (slug: string) => void;
+  removeItem: (cartKey: string) => void;
   clearCart: () => void;
 };
 
@@ -55,19 +58,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
       addItem: (item) => {
         setItems((current) => {
-          const existing = current.find((entry) => entry.slug === item.slug);
+          const existing = current.find((entry) => entry.cartKey === item.cartKey);
 
           if (existing) {
             return current.map((entry) =>
-              entry.slug === item.slug ? { ...entry, quantity: entry.quantity + 1 } : entry
+              entry.cartKey === item.cartKey ? { ...entry, quantity: entry.quantity + 1 } : entry
             );
           }
 
           return [...current, { ...item, quantity: 1 }];
         });
       },
-      removeItem: (slug) => {
-        setItems((current) => current.filter((item) => item.slug !== slug));
+      removeItem: (cartKey) => {
+        setItems((current) => current.filter((item) => item.cartKey !== cartKey));
       },
       clearCart: () => {
         setItems([]);

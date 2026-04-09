@@ -16,18 +16,28 @@ export function CartActionButtons({
     artClass: string;
     label: string;
     isPurchasable: boolean;
+    selectedColor?: string;
+    selectedVariantName?: string;
   };
 }) {
   const router = useRouter();
   const { addItem } = useCart();
-  const isDisabled = !product.isPurchasable || !product.productId;
+  const isDisabled = !product.isPurchasable;
+  const cartKey = [
+    product.slug,
+    product.selectedVariantName ?? "default",
+    product.selectedColor ?? "default"
+  ].join("::");
 
   function handleAddToCart() {
     if (isDisabled) {
       return;
     }
 
-    addItem(product);
+    addItem({
+      ...product,
+      cartKey
+    });
   }
 
   function handleBuyNow() {
@@ -35,7 +45,10 @@ export function CartActionButtons({
       return;
     }
 
-    addItem(product);
+    addItem({
+      ...product,
+      cartKey
+    });
     router.push("/checkout");
   }
 

@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   applicationName: siteConfig.name,
+  icons: {
+    icon: "/favicon-icon.jpg",
+    shortcut: "/favicon-icon.jpg",
+    apple: "/favicon-icon.jpg"
+  },
   alternates: {
     canonical: "/"
   },

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/ui/brand-logo";
+
 type AdminNavKey =
   | "analytics"
   | "products"
@@ -40,29 +42,29 @@ export function AdminLayout({
   return (
     <main className="admin-shell">
       <aside className="admin-sidebar">
-        <div className="admin-brand">
-          <div className="admin-brand-mark" />
-          <div>
-            <strong>Mandala Admin</strong>
-            <span>Mandala Fashions</span>
-          </div>
-        </div>
-
-        <nav className="admin-nav" aria-label="Admin navigation">
-          {sidebarLinks.map((item) => (
-            <Link className={item.key === active ? "is-active" : undefined} href={item.href} key={item.key}>
-              {item.label}
+        <div className="admin-sidebar-inner">
+          <div className="admin-brand">
+            <Link href="/">
+              <BrandLogo className="brand-logo admin-brand-logo" width={170} />
             </Link>
-          ))}
-        </nav>
+          </div>
 
-        <button className="admin-create-button" type="button">
-          {createLabel}
-        </button>
+          <button className="admin-create-button" type="button">
+            {createLabel}
+          </button>
 
-        <div className="admin-sidebar-footer">
-          <Link href="/admin/settings">Settings</Link>
-          <Link href="/contact">Support</Link>
+          <nav className="admin-nav" aria-label="Admin navigation">
+            {sidebarLinks.map((item) => (
+              <Link className={item.key === active ? "is-active" : undefined} href={item.href} key={item.key}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="admin-sidebar-footer">
+            <Link href="/admin/settings">Settings</Link>
+            <Link href="/contact">Support</Link>
+          </div>
         </div>
       </aside>
 
@@ -82,7 +84,7 @@ export function AdminLayout({
           </nav>
 
           <div className="admin-userbar">
-            <button type="button" aria-label="Notifications">
+            <button className="admin-icon-button" type="button" aria-label="Notifications">
               <span className="admin-bell" />
             </button>
             <div className="admin-usercard">

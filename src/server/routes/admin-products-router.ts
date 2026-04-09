@@ -5,6 +5,7 @@ import { requireRequestRole } from "@/server/auth/guards";
 import { listAdminProducts } from "@/server/admin/service";
 import {
   adjustInventory,
+  bulkImportProducts,
   deleteProduct,
   getAdminProduct,
   updateProduct
@@ -153,6 +154,41 @@ adminProductsRouter.patch(
 
     const product = await updateProduct(id, { status: parsed.data.status });
     res.json({ data: product });
+  })
+);
+
+// POST /bulk-import — import multiple products from parsed CSV rows
+const bulkImportRowSchema = z.object({
+  Category: z.string().optional(),
+  Material: z.string().optional(),
+  Type: z.string().min(1),
+  Variant: z.string().optional(),
+  Description: z.string().optional(),
+  Length: z.string().optional(),
+  Colors: z.string().optional(),
+  Price: z.coerce.number().positive(),
+  SKU: z.string().optional(),
+  Qty: z.coerce.number().int().min(0).default(0)
+});
+
+const bulkImportSchema = z.object({
+  rows: z.array(bulkImportRowSchema).min(1).max(500)
+});
+
+adminProductsRouter.post(
+  "/bulk-import",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const parsed = bulkImportSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid import payload.", details: parsed.error.flatten() });
+      return;
+    }
+
+    const result = await bulkImportProducts(parsed.data.rows);
+    res.status(201).json({ data: result });
   })
 );
 

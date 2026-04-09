@@ -107,6 +107,81 @@ export async function listProducts() {
   }));
 }
 
+type BulkImportRow = {
+  Category?: string;
+  Material?: string;
+  Type: string;
+  Variant?: string;
+  Description?: string;
+  Length?: string;
+  Colors?: string;
+  Price: number;
+  SKU?: string;
+  Qty: number;
+};
+
+export async function bulkImportProducts(rows: BulkImportRow[]) {
+  const created: string[] = [];
+  const skipped: string[] = [];
+  const errors: string[] = [];
+
+  for (const row of rows) {
+    try {
+      const name = row.Variant ? `${row.Type} - ${row.Variant}` : row.Type;
+      const color = row.Colors || row.Variant || undefined;
+      const description = [
+        row.Description,
+        row.Length ? `Length: ${row.Length}` : ""
+      ].filter(Boolean).join(". ") || `${name} — ${row.Material ?? "handcrafted"} saree.`;
+
+      const baseSlug = name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      // Check SKU conflict
+      if (row.SKU) {
+        const existing = await prisma.product.findUnique({ where: { sku: row.SKU } });
+        if (existing) {
+          skipped.push(`${row.SKU} (duplicate SKU)`);
+          continue;
+        }
+      }
+
+      // Check slug conflict and make unique
+      const slugCount = await prisma.product.count({
+        where: { slug: { startsWith: baseSlug } }
+      });
+      const slug = slugCount === 0 ? baseSlug : `${baseSlug}-${slugCount + 1}`;
+
+      const sku = row.SKU?.trim() || `SKU-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+
+      await prisma.product.create({
+        data: {
+          name,
+          slug,
+          sku,
+          description,
+          price: row.Price,
+          fabric: row.Material || undefined,
+          occasion: row.Category || undefined,
+          color,
+          inventoryCount: row.Qty,
+          status: "ACTIVE"
+        }
+      });
+
+      created.push(sku);
+    } catch (error) {
+      const label = row.SKU || row.Type;
+      errors.push(`${label}: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  return { created: created.length, skipped: skipped.length, errors };
+}
+
 export async function createProduct(input: CreateProductInput) {
   const baseSlug = input.name
     .toLowerCase()

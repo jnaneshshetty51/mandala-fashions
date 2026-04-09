@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { CartCountBadge } from "@/components/cart/cart-count-badge";
 import { EmailCaptureForm } from "@/components/forms/email-capture-form";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { assistanceLinks } from "@/lib/archive-data";
 import {
   footerDiscoverLinks,
@@ -32,7 +33,7 @@ export function ArchiveShell({ children, activeNav = "shop" }: ArchiveShellProps
     <main className="archive-page">
       <header className="archive-header">
         <Link className="archive-brand" href="/">
-          Mandala Fashions
+          <BrandLogo className="brand-logo brand-logo-header" priority width={220} />
         </Link>
         <nav className="archive-nav" aria-label="Primary">
           <Link className={activeNav === "shop" ? "is-active" : undefined} href="/shop">
@@ -63,7 +64,9 @@ export function ArchiveShell({ children, activeNav = "shop" }: ArchiveShellProps
 
       <footer className="archive-footer" id="footer">
         <div className="footer-column footer-brand">
-          <h2>Mandala Fashions</h2>
+          <Link className="footer-brand-logo" href="/">
+            <BrandLogo className="brand-logo" width={260} />
+          </Link>
           <p>{siteConfig.footerCopy}</p>
           <div className="footer-socials" aria-label="Social links">
             {socialShortcutLinks.map((item) => (
