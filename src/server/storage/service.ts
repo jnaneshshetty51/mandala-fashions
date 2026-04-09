@@ -3,6 +3,41 @@ import { basename, extname } from "node:path";
 
 import { minioClient, storageBucket } from "@/server/storage/config";
 
+function trimTrailingSlash(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+export function buildStorageAssetUrl(objectName: string) {
+  return `/media/${encodeURIComponent(objectName)}`;
+}
+
+export function normalizeStorageUrl(url?: string | null) {
+  const value = url?.trim();
+
+  if (!value) {
+    return null;
+  }
+
+  if (value.startsWith("/media/")) {
+    return value;
+  }
+
+  const publicBaseUrl = process.env.MINIO_PUBLIC_URL ? trimTrailingSlash(process.env.MINIO_PUBLIC_URL) : null;
+  const publicPrefix = publicBaseUrl ? `${publicBaseUrl}/${storageBucket}/` : null;
+
+  if (publicPrefix && value.startsWith(publicPrefix)) {
+    return buildStorageAssetUrl(value.slice(publicPrefix.length));
+  }
+
+  const localhostPrefix = `http://127.0.0.1:9000/${storageBucket}/`;
+
+  if (value.startsWith(localhostPrefix)) {
+    return buildStorageAssetUrl(value.slice(localhostPrefix.length));
+  }
+
+  return value;
+}
+
 export async function ensureBucket() {
   const exists = await minioClient.bucketExists(storageBucket);
 
@@ -27,6 +62,6 @@ export async function uploadFileToStorage(file: Express.Multer.File) {
   return {
     objectName,
     bucket: storageBucket,
-    url: `${process.env.MINIO_PUBLIC_URL ?? "http://127.0.0.1:9000"}/${storageBucket}/${objectName}`
+    url: buildStorageAssetUrl(objectName)
   };
 }

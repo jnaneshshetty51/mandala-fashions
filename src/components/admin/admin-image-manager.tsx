@@ -5,6 +5,7 @@ type AdminImageManagerProps = {
   imageUploading: boolean;
   onImageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onImageUrlTextChange: (value: string) => void;
+  onMakePrimary: (index: number) => void;
   onRemoveImage: (index: number) => void;
 };
 
@@ -13,6 +14,7 @@ export function AdminImageManager({
   imageUploading,
   onImageChange,
   onImageUrlTextChange,
+  onMakePrimary,
   onRemoveImage
 }: AdminImageManagerProps) {
   return (
@@ -26,6 +28,10 @@ export function AdminImageManager({
           value={imageUrls.join("\n")}
         />
       </label>
+
+      <p className="admin-image-helper">
+        The first image becomes the primary storefront thumbnail. Upload or paste multiple URLs to build the gallery.
+      </p>
 
       <label>
         <span>Upload Images</span>
@@ -54,9 +60,16 @@ export function AdminImageManager({
               />
               <div className="admin-image-meta">
                 <span>{index === 0 ? "Primary image" : `Image ${index + 1}`}</span>
-                <button className="admin-image-remove" onClick={() => onRemoveImage(index)} type="button">
-                  Delete
-                </button>
+                <div className="admin-image-actions">
+                  {index > 0 ? (
+                    <button className="admin-image-promote" onClick={() => onMakePrimary(index)} type="button">
+                      Make primary
+                    </button>
+                  ) : null}
+                  <button className="admin-image-remove" onClick={() => onRemoveImage(index)} type="button">
+                    Delete
+                  </button>
+                </div>
               </div>
             </article>
           ))}

@@ -6,6 +6,7 @@ import { listAdminProducts } from "@/server/admin/service";
 import {
   adjustInventory,
   bulkImportProducts,
+  createProduct,
   deleteProduct,
   getAdminProduct,
   updateProduct
@@ -18,6 +19,22 @@ function asyncHandler(
     void handler(req, res, next).catch(next);
   };
 }
+
+const createProductSchema = z.object({
+  category: z.string().min(2),
+  material: z.string().min(2),
+  type: z.string().min(2),
+  variant: z.string().optional(),
+  description: z.string().min(10),
+  length: z.string().optional(),
+  colors: z.string().optional(),
+  price: z.coerce.number().positive(),
+  sku: z.string().min(2),
+  qty: z.coerce.number().int().min(0).optional(),
+  imageUrl: z.string().url().optional(),
+  imageUrls: z.array(z.string().url()).optional(),
+  status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
+});
 
 const updateProductSchema = z
   .object({
@@ -48,6 +65,24 @@ const inventorySchema = z.object({
 });
 
 export const adminProductsRouter = Router();
+
+// POST / — create product
+adminProductsRouter.post(
+  "/",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const parsed = createProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid product payload.", details: parsed.error.flatten() });
+      return;
+    }
+
+    const product = await createProduct(parsed.data);
+    res.status(201).json({ data: product });
+  })
+);
 
 // GET / — list all products
 adminProductsRouter.get(
@@ -216,7 +251,16 @@ adminProductsRouter.patch(
       return;
     }
 
-    const result = await adjustInventory(id, parsed.data.delta);
-    res.json({ data: result });
+    try {
+      const result = await adjustInventory(id, parsed.data.delta);
+      res.json({ data: result });
+    } catch (error) {
+      if (error instanceof Error && error.message === "Inventory adjustment would make stock negative.") {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
+      throw error;
+    }
   })
 );

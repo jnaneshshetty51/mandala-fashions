@@ -2,6 +2,7 @@ import { cache } from "react";
 
 import { archiveProducts, type ArchiveProduct } from "@/lib/archive-data";
 import { prisma } from "@/server/db";
+import { normalizeStorageUrl } from "@/server/storage/service";
 
 export type CatalogProduct = ArchiveProduct & {
   id: string;
@@ -109,8 +110,13 @@ function toCatalogProduct(product: {
     }).format(compareAt),
     discountLabel: `${Math.max(10, Math.round(((compareAt - product.price) / compareAt) * 100))}% off`,
     artClass: inferArtClass(index),
-    imageUrl: content.imageUrls[0] ?? product.imageUrl,
-    galleryImages: content.imageUrls.length > 0 ? content.imageUrls : product.imageUrl ? [product.imageUrl, product.imageUrl, product.imageUrl] : [],
+    imageUrl: normalizeStorageUrl(content.imageUrls[0] ?? product.imageUrl),
+    galleryImages:
+      content.imageUrls.length > 0
+        ? content.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
+        : product.imageUrl
+          ? [normalizeStorageUrl(product.imageUrl)].filter((item): item is string => Boolean(item))
+          : [],
     category: `${inferOccasion(product.occasion)} Sarees`,
     fabric: inferFabric(product.fabric),
     occasion: inferOccasion(product.occasion),

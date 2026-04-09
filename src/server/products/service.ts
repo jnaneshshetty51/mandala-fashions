@@ -1,4 +1,5 @@
 import { prisma } from "@/server/db";
+import { normalizeStorageUrl } from "@/server/storage/service";
 
 type UpdateProductInput = {
   category?: string;
@@ -59,7 +60,9 @@ function composeProductContent(input: {
 }) {
   const cleanDescription = input.description.trim();
   const cleanLength = input.length?.trim();
-  const cleanImageUrls = (input.imageUrls ?? []).map((item) => item.trim()).filter(Boolean);
+  const cleanImageUrls = (input.imageUrls ?? [])
+    .map((item) => normalizeStorageUrl(item))
+    .filter((item): item is string => Boolean(item));
   const parts = [cleanDescription];
 
   if (cleanLength) {
@@ -126,7 +129,12 @@ export async function getAdminProduct(id: string) {
     length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
-    imageUrls: contentParts.imageUrls.length > 0 ? contentParts.imageUrls : product.imageUrl ? [product.imageUrl] : [],
+    imageUrls:
+      contentParts.imageUrls.length > 0
+        ? contentParts.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
+        : product.imageUrl
+          ? [normalizeStorageUrl(product.imageUrl)].filter((item): item is string => Boolean(item))
+          : [],
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };
@@ -148,11 +156,13 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   const nextDescription = input.description ?? existingContentParts.description;
   const nextLength = input.length ?? existingContentParts.length;
   const nextImageUrls =
-    input.imageUrls !== undefined ? input.imageUrls : existingContentParts.imageUrls.length > 0
-      ? existingContentParts.imageUrls
-      : existing.imageUrl
-        ? [existing.imageUrl]
-        : [];
+    input.imageUrls !== undefined
+      ? input.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
+      : existingContentParts.imageUrls.length > 0
+        ? existingContentParts.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
+        : existing.imageUrl
+          ? [normalizeStorageUrl(existing.imageUrl)].filter((item): item is string => Boolean(item))
+          : [];
 
   const product = await prisma.product.update({
     where: { id },
@@ -170,7 +180,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
       ...(input.price !== undefined && { price: input.price }),
       ...(input.sku !== undefined && { sku: input.sku.trim() }),
       ...((input.imageUrl !== undefined || input.imageUrls !== undefined) && {
-        imageUrl: input.imageUrls?.[0] ?? input.imageUrl ?? null
+        imageUrl: nextImageUrls[0] ?? normalizeStorageUrl(input.imageUrl) ?? null
       }),
       ...(input.material !== undefined && { fabric: input.material.trim() }),
       ...(input.category !== undefined && { occasion: input.category.trim() }),
@@ -193,7 +203,12 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
-    imageUrls: contentParts.imageUrls.length > 0 ? contentParts.imageUrls : product.imageUrl ? [product.imageUrl] : [],
+    imageUrls:
+      contentParts.imageUrls.length > 0
+        ? contentParts.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
+        : product.imageUrl
+          ? [normalizeStorageUrl(product.imageUrl)].filter((item): item is string => Boolean(item))
+          : [],
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };
@@ -217,12 +232,25 @@ export async function deleteProduct(id: string) {
 }
 
 export async function adjustInventory(id: string, delta: number) {
+  const existing = await prisma.product.findUnique({
+    where: { id },
+    select: { id: true, inventoryCount: true }
+  });
+
+  if (!existing) {
+    throw new Error("Product not found.");
+  }
+
+  const nextInventoryCount = existing.inventoryCount + delta;
+
+  if (nextInventoryCount < 0) {
+    throw new Error("Inventory adjustment would make stock negative.");
+  }
+
   const product = await prisma.product.update({
     where: { id },
     data: {
-      inventoryCount: {
-        increment: delta
-      }
+      inventoryCount: nextInventoryCount
     }
   });
 
@@ -242,6 +270,7 @@ type CreateProductInput = {
   imageUrl?: string;
   imageUrls?: string[];
   qty?: number;
+  status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
 };
 
 export async function listProducts() {
@@ -334,7 +363,9 @@ export async function bulkImportProducts(rows: BulkImportRow[]) {
 
 export async function createProduct(input: CreateProductInput) {
   const name = composeProductName(input.type, input.variant);
-  const imageUrls = (input.imageUrls ?? []).map((item) => item.trim()).filter(Boolean);
+  const imageUrls = (input.imageUrls ?? [])
+    .map((item) => normalizeStorageUrl(item))
+    .filter((item): item is string => Boolean(item));
   const description = composeProductContent({
     description: input.description,
     length: input.length,
@@ -364,12 +395,12 @@ export async function createProduct(input: CreateProductInput) {
       sku: input.sku.trim(),
       description,
       price: input.price,
-      imageUrl: imageUrls[0] ?? input.imageUrl,
+      imageUrl: imageUrls[0] ?? normalizeStorageUrl(input.imageUrl) ?? null,
       fabric: input.material.trim(),
       occasion: input.category.trim(),
       color: input.colors?.trim(),
       inventoryCount: input.qty ?? 0,
-      status: "ACTIVE"
+      status: input.status ?? "ACTIVE"
     }
   });
 
@@ -386,7 +417,12 @@ export async function createProduct(input: CreateProductInput) {
     length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
-    imageUrls: contentParts.imageUrls.length > 0 ? contentParts.imageUrls : product.imageUrl ? [product.imageUrl] : [],
+    imageUrls:
+      contentParts.imageUrls.length > 0
+        ? contentParts.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
+        : product.imageUrl
+          ? [normalizeStorageUrl(product.imageUrl)].filter((item): item is string => Boolean(item))
+          : [],
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };

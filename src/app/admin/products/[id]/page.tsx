@@ -82,37 +82,37 @@ export default async function AdminProductDetailPage({
           </div>
 
           <div style={{ padding: "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {product.occasion ? (
+            {product.category ? (
               <p>
-                <strong>Category:</strong> {product.occasion}
+                <strong>Category:</strong> {product.category}
               </p>
             ) : null}
-            {product.fabric ? (
+            {product.material ? (
               <p>
-                <strong>Material:</strong> {product.fabric}
+                <strong>Material:</strong> {product.material}
               </p>
             ) : null}
             <p>
-              <strong>Type:</strong> {product.name.split(" - ")[0]}
+              <strong>Type:</strong> {product.type}
             </p>
-            {product.name.includes(" - ") ? (
+            {product.variant ? (
               <p>
-                <strong>Variant:</strong> {product.name.split(" - ").slice(1).join(" - ")}
+                <strong>Variant:</strong> {product.variant}
               </p>
             ) : null}
             {product.description ? (
               <p>
-                <strong>Description:</strong> {product.description.replace(/\n\nLength:\s*.+$/, "")}
+                <strong>Description:</strong> {product.description}
               </p>
             ) : null}
-            {product.description.match(/\n\nLength:\s*(.+)$/)?.[1] ? (
+            {product.length ? (
               <p>
-                <strong>Length:</strong> {product.description.match(/\n\nLength:\s*(.+)$/)?.[1]}
+                <strong>Length:</strong> {product.length}
               </p>
             ) : null}
-            {product.color ? (
+            {product.colors ? (
               <p>
-                <strong>Colors:</strong> {product.color}
+                <strong>Colors:</strong> {product.colors}
               </p>
             ) : null}
             {product.imageUrls.length > 0 ? (
@@ -161,13 +161,13 @@ export default async function AdminProductDetailPage({
         <ProductEditForm
           product={{
             id: product.id,
-            category: product.occasion,
-            material: product.fabric,
-            type: product.name.split(" - ")[0],
-            variant: product.name.split(" - ").slice(1).join(" - "),
-            description: product.description.replace(/\n\nLength:\s*.+$/, ""),
-            length: product.description.match(/\n\nLength:\s*(.+)$/)?.[1] ?? "",
-            colors: product.color,
+            category: product.category,
+            material: product.material,
+            type: product.type,
+            variant: product.variant,
+            description: product.description,
+            length: product.length,
+            colors: product.colors,
             price,
             sku: product.sku,
             qty: product.inventoryCount,

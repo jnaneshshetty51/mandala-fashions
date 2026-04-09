@@ -82,7 +82,7 @@ export function ProductCreateForm() {
       imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
     };
 
-    const response = await fetch("/api/products", {
+    const response = await fetch("/api/admin/products", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

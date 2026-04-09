@@ -234,6 +234,37 @@ async function bootstrap() {
     });
   });
 
+  server.get("/media/:objectName", asyncHandler(async (req, res) => {
+    const rawObjectName = req.params.objectName;
+
+    if (typeof rawObjectName !== "string" || rawObjectName.length === 0) {
+      return res.status(400).json({ error: "Missing media asset." });
+    }
+
+    const objectName = decodeURIComponent(rawObjectName);
+
+    try {
+      const stat = await minioClient.statObject(storageBucket, objectName);
+      const stream = await minioClient.getObject(storageBucket, objectName);
+
+      res.setHeader("Content-Type", stat.metaData?.["content-type"] ?? "application/octet-stream");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      stream.on("error", (error) => {
+        console.error("Storage stream failed", error);
+        if (!res.headersSent) {
+          res.status(500).end("Unable to load media.");
+        } else {
+          res.end();
+        }
+      });
+
+      return stream.pipe(res);
+    } catch (error) {
+      console.error("Storage asset lookup failed", error);
+      return res.status(404).json({ error: "Media asset not found." });
+    }
+  }));
+
   server.get("/api/auth/me", async (req, res) => {
     const user = getSessionFromCookieHeader(req.headers.cookie);
 
