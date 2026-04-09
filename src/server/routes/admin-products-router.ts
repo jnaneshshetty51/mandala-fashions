@@ -42,6 +42,23 @@ function optionalUrlString() {
   }, z.string().url().optional());
 }
 
+function mediaUrlString() {
+  return z.string().refine((value) => value.startsWith("/media/") || z.string().url().safeParse(value).success, {
+    message: "Must be a valid URL or media path."
+  });
+}
+
+function optionalMediaUrlString() {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : trimmed;
+  }, mediaUrlString().optional());
+}
+
 function optionalNumber() {
   return z.preprocess((value) => {
     if (value === "" || value === null || value === undefined) {
@@ -73,8 +90,8 @@ const createProductSchema = z.object({
   price: z.coerce.number().positive(),
   sku: z.string().min(2),
   qty: z.coerce.number().int().min(0).optional(),
-  imageUrl: z.string().url().optional(),
-  imageUrls: z.array(z.string().url()).optional(),
+  imageUrl: optionalMediaUrlString(),
+  imageUrls: z.array(mediaUrlString()).optional(),
   status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
 });
 
@@ -89,8 +106,8 @@ const updateProductSchema = z
     colors: optionalTrimmedString(),
     price: optionalNumber().pipe(z.number().positive().optional()),
     sku: optionalTrimmedString(1),
-    imageUrl: optionalUrlString(),
-    imageUrls: z.array(z.string().url()).optional(),
+    imageUrl: optionalMediaUrlString(),
+    imageUrls: z.array(mediaUrlString()).optional(),
     qty: optionalInteger(0),
     status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
   })
