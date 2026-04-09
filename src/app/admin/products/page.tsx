@@ -61,7 +61,10 @@ export default async function AdminProductsPage({
     inventoryCount: p.inventoryCount,
     status: p.status as string,
     variants: p.variants.length,
-    material: p.fabric ?? "Unassigned"
+    material: p.fabric ?? "Unassigned",
+    category: p.occasion ?? "Unassigned",
+    imageUrl: p.imageUrl,
+    updatedAt: p.updatedAt
   }));
 
   const allProducts = await prisma.product.findMany({
@@ -74,6 +77,16 @@ export default async function AdminProductsPage({
   const activeCount = allProducts.filter((product) => product.status === "ACTIVE").length;
   const draftCount = allProducts.filter((product) => product.status === "DRAFT").length;
   const archivedCount = allProducts.filter((product) => product.status === "ARCHIVED").length;
+  const filteredStock = products.reduce((sum, product) => sum + product.inventoryCount, 0);
+  const lowStockCount = allProducts.filter((product) => product.inventoryCount > 0 && product.inventoryCount <= 3).length;
+
+  function formatUpdatedAt(value: Date) {
+    return new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    }).format(value);
+  }
 
   return (
     <AdminLayout
@@ -129,6 +142,11 @@ export default async function AdminProductsPage({
             <strong>{activeCount}</strong>
             <small>{draftCount} draft, {archivedCount} archived</small>
           </article>
+          <article className="admin-products-stat-card">
+            <span>Low stock</span>
+            <strong>{lowStockCount}</strong>
+            <small>Products with 1 to 3 units left</small>
+          </article>
         </section>
 
         <section className="admin-products-grid">
@@ -166,6 +184,9 @@ export default async function AdminProductsPage({
               {statusFilter ? <input name="status" type="hidden" value={statusFilter} /> : null}
               <span className="icon-search" />
               <input defaultValue={searchQuery} name="q" placeholder="Search by product, SKU, material..." type="text" />
+              <button className="admin-ghost-button admin-products-search-button" type="submit">
+                Search
+              </button>
             </form>
 
             <div className="admin-products-filters">
@@ -198,6 +219,7 @@ export default async function AdminProductsPage({
 
           <div className="admin-products-table-meta">
             <span>{products.length} result{products.length === 1 ? "" : "s"}</span>
+            <span>{filteredStock} visible units</span>
             {searchQuery ? <span>Searching for "{searchQuery}"</span> : null}
             {statusFilter ? <span>Status: {statusFilter}</span> : null}
           </div>
@@ -222,15 +244,26 @@ export default async function AdminProductsPage({
               products.map((product) => (
                 <div className="admin-table-row admin-table-row-products admin-products-table-row" key={product.id}>
                   <div className="admin-products-main-cell">
-                    <strong>
-                      <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
-                    </strong>
-                    <span>{product.material}</span>
+                    <div className="admin-products-identity">
+                      <div
+                        className="admin-products-thumb"
+                        style={product.imageUrl ? { backgroundImage: `url('${product.imageUrl}')` } : undefined}
+                      />
+                      <div className="admin-products-main-copy">
+                        <strong>
+                          <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
+                        </strong>
+                        <span>{product.category} · {product.material}</span>
+                        <small>Updated {formatUpdatedAt(product.updatedAt)}</small>
+                      </div>
+                    </div>
                   </div>
                   <span>{product.sku}</span>
                   <span>{product.material}</span>
                   <span>{product.variants}</span>
-                  <span>{product.inventoryCount}</span>
+                  <span className={product.inventoryCount <= 3 ? "admin-stock-pill is-low" : "admin-stock-pill"}>
+                    {product.inventoryCount}
+                  </span>
                   <em className={`status-${product.status.toLowerCase()}`}>{product.status}</em>
                   <strong>{formatCurrency(product.price)}</strong>
                   <span>

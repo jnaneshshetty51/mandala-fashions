@@ -46,6 +46,8 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
 
   const [imageUrls, setImageUrls] = useState<string[]>(product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []));
   const [imageUploading, setImageUploading] = useState(false);
+  const [currentQty, setCurrentQty] = useState(product.qty);
+  const [inventoryDelta, setInventoryDelta] = useState(0);
 
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -87,6 +89,18 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
 
   function handleRemoveImage(index: number) {
     setImageUrls((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function handleMakePrimary(index: number) {
+    setImageUrls((current) => {
+      const selected = current[index];
+
+      if (!selected) {
+        return current;
+      }
+
+      return [selected, ...current.filter((_, itemIndex) => itemIndex !== index)];
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -133,6 +147,7 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
       error: null,
       success: "Product updated successfully."
     });
+    setCurrentQty(Number(formData.get("qty") ?? currentQty));
     router.refresh();
   }
 
@@ -140,11 +155,15 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     event.preventDefault();
     setInventoryState({ isSubmitting: true, error: null, success: null });
 
-    const formData = new FormData(event.currentTarget);
-    const delta = Number(formData.get("delta") ?? 0);
+    const delta = inventoryDelta;
 
     if (!Number.isInteger(delta)) {
       setInventoryState({ isSubmitting: false, error: "Delta must be a whole number.", success: null });
+      return;
+    }
+
+    if (delta === 0) {
+      setInventoryState({ isSubmitting: false, error: "Enter a positive or negative stock change.", success: null });
       return;
     }
 
@@ -173,90 +192,138 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
       error: null,
       success: `Inventory adjusted. New count: ${result?.data?.inventoryCount ?? "updated"}.`
     });
+    setCurrentQty(result?.data?.inventoryCount ?? currentQty);
+    setInventoryDelta(0);
     router.refresh();
   }
 
   return (
     <>
       <form className="admin-settings-form" onSubmit={handleSubmit}>
-        <label>
-          <span>Category</span>
-          <input defaultValue={product.category ?? undefined} name="category" required type="text" />
-        </label>
-        <label>
-          <span>Material</span>
-          <input defaultValue={product.material ?? undefined} name="material" required type="text" />
-        </label>
-        <label>
-          <span>Type</span>
-          <input defaultValue={product.type} name="type" required type="text" />
-        </label>
-        <label>
-          <span>Variant</span>
-          <input defaultValue={product.variant || undefined} name="variant" type="text" />
-        </label>
-        <label>
-          <span>Description</span>
-          <input defaultValue={product.description} name="description" required type="text" />
-        </label>
-        <label>
-          <span>Length</span>
-          <input defaultValue={product.length || undefined} name="length" type="text" />
-        </label>
-        <label>
-          <span>Colors</span>
-          <input defaultValue={product.colors ?? undefined} name="colors" type="text" />
-        </label>
-        <label>
-          <span>Price</span>
-          <input defaultValue={product.price} min="1" name="price" required type="number" />
-        </label>
-        <label>
-          <span>SKU</span>
-          <input defaultValue={product.sku} name="sku" required type="text" />
-        </label>
-        <label>
-          <span>Qty</span>
-          <input defaultValue={product.qty} min="0" name="qty" type="number" />
-        </label>
+        <div className="admin-form-section">
+          <div className="admin-form-section-header">
+            <h3>Catalog details</h3>
+            <p>Keep the product story, naming, and storefront presentation accurate.</p>
+          </div>
+          <div className="admin-form-grid admin-form-grid-two">
+            <label>
+              <span>Category</span>
+              <input defaultValue={product.category ?? undefined} name="category" required type="text" />
+            </label>
+            <label>
+              <span>Material</span>
+              <input defaultValue={product.material ?? undefined} name="material" required type="text" />
+            </label>
+            <label>
+              <span>Type</span>
+              <input defaultValue={product.type} name="type" required type="text" />
+            </label>
+            <label>
+              <span>Variant</span>
+              <input defaultValue={product.variant || undefined} name="variant" type="text" />
+            </label>
+            <label className="admin-form-grid-span-2">
+              <span>Description</span>
+              <textarea defaultValue={product.description} name="description" required rows={5} />
+            </label>
+          </div>
+        </div>
+
+        <div className="admin-form-section">
+          <div className="admin-form-section-header">
+            <h3>Commerce settings</h3>
+            <p>Update pricing, stock, status, and operational details in one place.</p>
+          </div>
+          <div className="admin-form-grid admin-form-grid-three">
+            <label>
+              <span>Length</span>
+              <input defaultValue={product.length || undefined} name="length" type="text" />
+            </label>
+            <label>
+              <span>Colors</span>
+              <input defaultValue={product.colors ?? undefined} name="colors" type="text" />
+            </label>
+            <label>
+              <span>Status</span>
+              <select defaultValue={product.status} name="status">
+                <option value="DRAFT">Draft</option>
+                <option value="ACTIVE">Active</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </label>
+            <label>
+              <span>Price</span>
+              <input defaultValue={product.price} min="1" name="price" required type="number" />
+            </label>
+            <label>
+              <span>SKU</span>
+              <input defaultValue={product.sku} name="sku" required type="text" />
+            </label>
+            <label>
+              <span>Qty Snapshot</span>
+              <input defaultValue={product.qty} min="0" name="qty" type="number" />
+            </label>
+          </div>
+        </div>
+
         <AdminImageManager
           imageUploading={imageUploading}
           imageUrls={imageUrls}
           onImageChange={handleImageChange}
           onImageUrlTextChange={handleImageUrlTextChange}
+          onMakePrimary={handleMakePrimary}
           onRemoveImage={handleRemoveImage}
         />
-        <label>
-          <span>Status</span>
-          <select defaultValue={product.status} name="status">
-            <option value="DRAFT">Draft</option>
-            <option value="ACTIVE">Active</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
-        </label>
 
         {state.success ? <p className="admin-form-message success">{state.success}</p> : null}
         {state.error ? <p className="admin-form-message error">{state.error}</p> : null}
 
         <div className="admin-settings-actions">
-          <button className="admin-primary-button" disabled={state.isSubmitting} type="submit">
+          <button className="admin-primary-button" disabled={state.isSubmitting || imageUploading} type="submit">
             {state.isSubmitting ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>
 
       <form className="admin-settings-form" onSubmit={handleInventoryAdjust}>
-        <label>
-          <span>Adjust Stock</span>
-          <input
-            defaultValue={0}
-            name="delta"
-            placeholder="e.g. 5 to add, -3 to remove"
-            required
-            step={1}
-            type="number"
-          />
-        </label>
+        <div className="admin-form-section">
+          <div className="admin-form-section-header">
+            <h3>Inventory control</h3>
+            <p>Apply stock corrections without editing the main product record.</p>
+          </div>
+          <div className="admin-stock-summary">
+            <div>
+              <span>Current stock</span>
+              <strong>{currentQty}</strong>
+            </div>
+            <div className="admin-stock-shortcuts">
+              <button className="admin-secondary-button" onClick={() => setInventoryDelta((value) => value + 1)} type="button">
+                +1
+              </button>
+              <button className="admin-secondary-button" onClick={() => setInventoryDelta((value) => value + 5)} type="button">
+                +5
+              </button>
+              <button className="admin-secondary-button" onClick={() => setInventoryDelta((value) => value - 1)} type="button">
+                -1
+              </button>
+              <button className="admin-secondary-button" onClick={() => setInventoryDelta((value) => value - 5)} type="button">
+                -5
+              </button>
+            </div>
+          </div>
+          <label>
+            <span>Adjust Stock</span>
+            <input
+              name="delta"
+              onChange={(event) => setInventoryDelta(Number(event.target.value))}
+              placeholder="e.g. 5 to add, -3 to remove"
+              required
+              step={1}
+              type="number"
+              value={inventoryDelta}
+            />
+          </label>
+        </div>
 
         {inventoryState.success ? (
           <p className="admin-form-message success">{inventoryState.success}</p>
