@@ -489,6 +489,24 @@ async function bootstrap() {
     }
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        const target = Array.isArray(error.meta?.["target"])
+          ? (error.meta?.["target"] as string[])
+          : typeof error.meta?.["target"] === "string"
+            ? [error.meta["target"] as string]
+            : [];
+
+        if (target.includes("sku")) {
+          return res.status(409).json({ error: "A product with this SKU already exists. Please use a unique SKU." });
+        }
+
+        if (target.includes("slug")) {
+          return res.status(409).json({ error: "A product with a similar type and variant already exists." });
+        }
+
+        return res.status(409).json({ error: "This product conflicts with an existing record. Please review the SKU and details." });
+      }
+
       console.error("Prisma request failed", error);
       return res.status(503).json({ error: "The service is temporarily unavailable. Please try again." });
     }
