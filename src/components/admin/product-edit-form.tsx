@@ -103,6 +103,20 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     });
   }
 
+  function handleReorderImages(fromIndex: number, toIndex: number) {
+    setImageUrls((current) => {
+      const next = [...current];
+      const [movedImage] = next.splice(fromIndex, 1);
+
+      if (!movedImage) {
+        return current;
+      }
+
+      next.splice(toIndex, 0, movedImage);
+      return next;
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState({ isSubmitting: true, error: null, success: null });
@@ -269,11 +283,12 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
         <AdminImageManager
           imageUploading={imageUploading}
           imageUrls={imageUrls}
-          onImageChange={handleImageChange}
-          onImageUrlTextChange={handleImageUrlTextChange}
-          onMakePrimary={handleMakePrimary}
-          onRemoveImage={handleRemoveImage}
-        />
+        onImageChange={handleImageChange}
+        onImageUrlTextChange={handleImageUrlTextChange}
+        onMakePrimary={handleMakePrimary}
+        onReorderImages={handleReorderImages}
+        onRemoveImage={handleRemoveImage}
+      />
 
         {state.success ? <p className="admin-form-message success">{state.success}</p> : null}
         {state.error ? <p className="admin-form-message error">{state.error}</p> : null}

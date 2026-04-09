@@ -4472,6 +4472,18 @@ input {
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   background: #ffffff;
+  cursor: grab;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.admin-image-card.is-dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+
+.admin-image-card:hover {
+  border-color: rgba(15, 118, 110, 0.25);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 }
 
 .admin-image-preview {
@@ -4519,6 +4531,13 @@ input {
   color: #b91c1c;
   font-size: 0.82rem;
   font-weight: 600;
+}
+
+.admin-image-drag-note {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  text-align: right;
 }
 
 .admin-stock-summary {

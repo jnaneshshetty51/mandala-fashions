@@ -1,11 +1,14 @@
 "use client";
 
+import { useState, type DragEvent } from "react";
+
 type AdminImageManagerProps = {
   imageUrls: string[];
   imageUploading: boolean;
   onImageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onImageUrlTextChange: (value: string) => void;
   onMakePrimary: (index: number) => void;
+  onReorderImages: (fromIndex: number, toIndex: number) => void;
   onRemoveImage: (index: number) => void;
 };
 
@@ -15,8 +18,31 @@ export function AdminImageManager({
   onImageChange,
   onImageUrlTextChange,
   onMakePrimary,
+  onReorderImages,
   onRemoveImage
 }: AdminImageManagerProps) {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  function handleDragStart(index: number) {
+    setDraggedIndex(index);
+  }
+
+  function handleDrop(event: DragEvent<HTMLElement>, dropIndex: number) {
+    event.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    onReorderImages(draggedIndex, dropIndex);
+    setDraggedIndex(null);
+  }
+
+  function handleDragEnd() {
+    setDraggedIndex(null);
+  }
+
   return (
     <div className="admin-image-manager">
       <label>
@@ -30,7 +56,7 @@ export function AdminImageManager({
       </label>
 
       <p className="admin-image-helper">
-        The first image becomes the primary storefront thumbnail. Upload or paste multiple URLs to build the gallery.
+        The first image becomes the primary storefront thumbnail. Upload or paste multiple URLs, then drag cards to reorder the gallery.
       </p>
 
       <label>
@@ -49,7 +75,15 @@ export function AdminImageManager({
       {imageUrls.length > 0 ? (
         <div className="admin-image-grid">
           {imageUrls.map((url, index) => (
-            <article className="admin-image-card" key={`${url}-${index}`}>
+            <article
+              className={`admin-image-card ${draggedIndex === index ? "is-dragging" : ""}`}
+              draggable
+              key={`${url}-${index}`}
+              onDragEnd={handleDragEnd}
+              onDragOver={(event) => event.preventDefault()}
+              onDragStart={() => handleDragStart(index)}
+              onDrop={(event) => handleDrop(event, index)}
+            >
               <div
                 className="admin-image-preview"
                 style={{
@@ -71,6 +105,7 @@ export function AdminImageManager({
                   </button>
                 </div>
               </div>
+              <p className="admin-image-drag-note">Drag to change gallery order</p>
             </article>
           ))}
         </div>

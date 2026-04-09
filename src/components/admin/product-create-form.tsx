@@ -75,6 +75,20 @@ export function ProductCreateForm() {
     });
   }
 
+  function handleReorderImages(fromIndex: number, toIndex: number) {
+    setImageUrls((current) => {
+      const next = [...current];
+      const [movedImage] = next.splice(fromIndex, 1);
+
+      if (!movedImage) {
+        return current;
+      }
+
+      next.splice(toIndex, 0, movedImage);
+      return next;
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState({ isSubmitting: true, error: null, success: null });
@@ -209,6 +223,7 @@ export function ProductCreateForm() {
         onImageChange={handleImageChange}
         onImageUrlTextChange={handleImageUrlTextChange}
         onMakePrimary={handleMakePrimary}
+        onReorderImages={handleReorderImages}
         onRemoveImage={handleRemoveImage}
       />
 
