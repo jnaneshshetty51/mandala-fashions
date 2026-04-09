@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-function getRemotePatterns(): NextConfig["images"]["remotePatterns"] {
-  const patterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
+function getRemotePatterns() {
+  const patterns: { protocol: "http" | "https"; hostname: string }[] = [];
 
   const minioPublicUrl = process.env.MINIO_PUBLIC_URL;
   if (minioPublicUrl) {
