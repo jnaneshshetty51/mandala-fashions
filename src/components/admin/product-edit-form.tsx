@@ -49,6 +49,22 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
   const [currentQty, setCurrentQty] = useState(product.qty);
   const [inventoryDelta, setInventoryDelta] = useState(0);
 
+  function getErrorMessage(result: {
+    error?: string;
+    details?: { fieldErrors?: Record<string, string[] | undefined> };
+  } | null, fallback: string) {
+    const fieldErrors = result?.details?.fieldErrors;
+
+    if (fieldErrors) {
+      const firstFieldError = Object.values(fieldErrors).flat().find(Boolean);
+      if (firstFieldError) {
+        return firstFieldError;
+      }
+    }
+
+    return result?.error ?? fallback;
+  }
+
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
@@ -145,12 +161,15 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
       body: JSON.stringify(payload)
     });
 
-    const result = (await response.json().catch(() => null)) as { error?: string } | null;
+    const result = (await response.json().catch(() => null)) as {
+      error?: string;
+      details?: { fieldErrors?: Record<string, string[] | undefined> };
+    } | null;
 
     if (!response.ok) {
       setState({
         isSubmitting: false,
-        error: result?.error ?? "Unable to update product right now.",
+        error: getErrorMessage(result, "Unable to update product right now."),
         success: null
       });
       return;

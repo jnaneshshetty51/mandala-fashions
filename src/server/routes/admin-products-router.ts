@@ -20,6 +20,48 @@ function asyncHandler(
   };
 }
 
+function optionalTrimmedString(minLength = 0) {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : trimmed;
+  }, minLength > 0 ? z.string().min(minLength).optional() : z.string().optional());
+}
+
+function optionalUrlString() {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : trimmed;
+  }, z.string().url().optional());
+}
+
+function optionalNumber() {
+  return z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return undefined;
+    }
+
+    return value;
+  }, z.coerce.number().optional());
+}
+
+function optionalInteger(minValue?: number) {
+  return z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return undefined;
+    }
+
+    return value;
+  }, typeof minValue === "number" ? z.coerce.number().int().min(minValue).optional() : z.coerce.number().int().optional());
+}
+
 const createProductSchema = z.object({
   category: z.string().min(2),
   material: z.string().min(2),
@@ -38,18 +80,18 @@ const createProductSchema = z.object({
 
 const updateProductSchema = z
   .object({
-    category: z.string().min(1).optional(),
-    material: z.string().min(1).optional(),
-    type: z.string().min(1).optional(),
-    variant: z.string().optional(),
-    description: z.string().min(1).optional(),
-    length: z.string().optional(),
-    colors: z.string().optional(),
-    price: z.number().positive().optional(),
-    sku: z.string().min(1).optional(),
-    imageUrl: z.string().url().optional(),
+    category: optionalTrimmedString(1),
+    material: optionalTrimmedString(1),
+    type: optionalTrimmedString(1),
+    variant: optionalTrimmedString(),
+    description: optionalTrimmedString(1),
+    length: optionalTrimmedString(),
+    colors: optionalTrimmedString(),
+    price: optionalNumber().pipe(z.number().positive().optional()),
+    sku: optionalTrimmedString(1),
+    imageUrl: optionalUrlString(),
     imageUrls: z.array(z.string().url()).optional(),
-    qty: z.number().int().min(0).optional(),
+    qty: optionalInteger(0),
     status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
   })
   .refine((data) => Object.keys(data).length > 0, {
