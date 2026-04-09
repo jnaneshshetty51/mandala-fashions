@@ -1,20 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 type ProductEditFormProps = {
   product: {
     id: string;
-    name: string;
+    category: string | null;
+    material: string | null;
+    type: string;
+    variant: string;
     description: string;
+    length: string;
+    colors: string | null;
     price: number;
-    compareAtPrice: number | null;
-    inventoryCount: number;
+    sku: string;
+    qty: number;
     imageUrl: string | null;
-    fabric: string | null;
-    occasion: string | null;
-    color: string | null;
     status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   };
 };
@@ -39,33 +41,56 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     success: null
   });
 
+  const [imageUrl, setImageUrl] = useState<string>(product.imageUrl ?? "");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(product.imageUrl ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImagePreview(URL.createObjectURL(file));
+    setImageUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/uploads", { method: "POST", body: formData });
+    const result = (await response.json().catch(() => null)) as { data?: { url: string }; error?: string } | null;
+
+    setImageUploading(false);
+
+    if (!response.ok || !result?.data?.url) {
+      setState((s) => ({ ...s, error: result?.error ?? "Image upload failed." }));
+      setImagePreview(product.imageUrl ?? null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setImageUrl(result.data.url);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState({ isSubmitting: true, error: null, success: null });
 
     const formData = new FormData(event.currentTarget);
     const payload: Record<string, unknown> = {
-      name: String(formData.get("name") ?? ""),
+      category: String(formData.get("category") ?? ""),
+      material: String(formData.get("material") ?? ""),
+      type: String(formData.get("type") ?? ""),
+      variant: String(formData.get("variant") ?? ""),
       description: String(formData.get("description") ?? ""),
+      length: String(formData.get("length") ?? ""),
+      colors: String(formData.get("colors") ?? ""),
       price: Number(formData.get("price") ?? 0),
+      sku: String(formData.get("sku") ?? ""),
       status: String(formData.get("status") ?? "DRAFT"),
-      inventoryCount: Number(formData.get("inventoryCount") ?? 0)
+      qty: Number(formData.get("qty") ?? 0)
     };
 
-    const compareAtPrice = Number(formData.get("compareAtPrice") ?? 0);
-    if (compareAtPrice > 0) payload.compareAtPrice = compareAtPrice;
-
-    const imageUrl = String(formData.get("imageUrl") ?? "").trim();
     if (imageUrl) payload.imageUrl = imageUrl;
-
-    const fabric = String(formData.get("fabric") ?? "").trim();
-    if (fabric) payload.fabric = fabric;
-
-    const occasion = String(formData.get("occasion") ?? "").trim();
-    if (occasion) payload.occasion = occasion;
-
-    const color = String(formData.get("color") ?? "").trim();
-    if (color) payload.color = color;
 
     const response = await fetch(`/api/admin/products/${product.id}`, {
       method: "PUT",
@@ -136,51 +161,61 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     <>
       <form className="admin-settings-form" onSubmit={handleSubmit}>
         <label>
-          <span>Product Name</span>
-          <input defaultValue={product.name} name="name" required type="text" />
+          <span>Category</span>
+          <input defaultValue={product.category ?? undefined} name="category" required type="text" />
+        </label>
+        <label>
+          <span>Material</span>
+          <input defaultValue={product.material ?? undefined} name="material" required type="text" />
+        </label>
+        <label>
+          <span>Type</span>
+          <input defaultValue={product.type} name="type" required type="text" />
+        </label>
+        <label>
+          <span>Variant</span>
+          <input defaultValue={product.variant || undefined} name="variant" type="text" />
         </label>
         <label>
           <span>Description</span>
           <input defaultValue={product.description} name="description" required type="text" />
         </label>
         <label>
+          <span>Length</span>
+          <input defaultValue={product.length || undefined} name="length" type="text" />
+        </label>
+        <label>
+          <span>Colors</span>
+          <input defaultValue={product.colors ?? undefined} name="colors" type="text" />
+        </label>
+        <label>
           <span>Price</span>
           <input defaultValue={product.price} min="1" name="price" required type="number" />
         </label>
         <label>
-          <span>Compare At Price</span>
+          <span>SKU</span>
+          <input defaultValue={product.sku} name="sku" required type="text" />
+        </label>
+        <label>
+          <span>Qty</span>
+          <input defaultValue={product.qty} min="0" name="qty" type="number" />
+        </label>
+        <label>
+          <span>Product Image</span>
           <input
-            defaultValue={product.compareAtPrice ?? undefined}
-            min="1"
-            name="compareAtPrice"
-            type="number"
+            accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+            disabled={imageUploading}
+            onChange={handleImageChange}
+            ref={fileInputRef}
+            type="file"
           />
         </label>
-        <label>
-          <span>Inventory Count</span>
-          <input
-            defaultValue={product.inventoryCount}
-            min="0"
-            name="inventoryCount"
-            type="number"
-          />
-        </label>
-        <label>
-          <span>Image URL</span>
-          <input defaultValue={product.imageUrl ?? undefined} name="imageUrl" type="url" />
-        </label>
-        <label>
-          <span>Fabric</span>
-          <input defaultValue={product.fabric ?? undefined} name="fabric" type="text" />
-        </label>
-        <label>
-          <span>Occasion</span>
-          <input defaultValue={product.occasion ?? undefined} name="occasion" type="text" />
-        </label>
-        <label>
-          <span>Color</span>
-          <input defaultValue={product.color ?? undefined} name="color" type="text" />
-        </label>
+        {imageUploading ? <p className="admin-form-message">Uploading image...</p> : null}
+        {imagePreview && !imageUploading ? (
+          <div style={{ marginBottom: "0.5rem" }}>
+            <img alt="Preview" src={imagePreview} style={{ maxHeight: 120, maxWidth: 200, borderRadius: 6, border: "1px solid var(--admin-border)" }} />
+          </div>
+        ) : null}
         <label>
           <span>Status</span>
           <select defaultValue={product.status} name="status">

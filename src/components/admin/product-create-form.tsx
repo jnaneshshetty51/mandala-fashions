@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 type FormState = {
   isSubmitting: boolean;
@@ -16,6 +16,35 @@ export function ProductCreateForm() {
     error: null,
     success: null
   });
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImagePreview(URL.createObjectURL(file));
+    setImageUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/uploads", { method: "POST", body: formData });
+    const result = (await response.json().catch(() => null)) as { data?: { url: string }; error?: string } | null;
+
+    setImageUploading(false);
+
+    if (!response.ok || !result?.data?.url) {
+      setState((s) => ({ ...s, error: result?.error ?? "Image upload failed." }));
+      setImagePreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setImageUrl(result.data.url);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,15 +52,17 @@ export function ProductCreateForm() {
 
     const formData = new FormData(event.currentTarget);
     const payload = {
-      name: String(formData.get("name") ?? ""),
+      category: String(formData.get("category") ?? ""),
+      material: String(formData.get("material") ?? ""),
+      type: String(formData.get("type") ?? ""),
+      variant: String(formData.get("variant") ?? "") || undefined,
       description: String(formData.get("description") ?? ""),
+      length: String(formData.get("length") ?? "") || undefined,
+      colors: String(formData.get("colors") ?? "") || undefined,
       price: Number(formData.get("price") ?? 0),
-      compareAtPrice: Number(formData.get("compareAtPrice") ?? 0) || undefined,
-      inventoryCount: Number(formData.get("inventoryCount") ?? 0),
-      imageUrl: String(formData.get("imageUrl") ?? "") || undefined,
-      fabric: String(formData.get("fabric") ?? "") || undefined,
-      occasion: String(formData.get("occasion") ?? "") || undefined,
-      color: String(formData.get("color") ?? "") || undefined
+      sku: String(formData.get("sku") ?? ""),
+      qty: Number(formData.get("qty") ?? 0),
+      imageUrl: imageUrl || undefined,
     };
 
     const response = await fetch("/api/products", {
@@ -54,6 +85,9 @@ export function ProductCreateForm() {
     }
 
     event.currentTarget.reset();
+    setImageUrl("");
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setState({
       isSubmitting: false,
       error: null,
@@ -65,41 +99,61 @@ export function ProductCreateForm() {
   return (
     <form className="admin-settings-form" onSubmit={handleSubmit}>
       <label>
-        <span>Product Name</span>
-        <input name="name" placeholder="Midnight Emerald Silk" required type="text" />
+        <span>Category</span>
+        <input name="category" placeholder="Wedding Sarees" required type="text" />
+      </label>
+      <label>
+        <span>Material</span>
+        <input name="material" placeholder="Silk" required type="text" />
+      </label>
+      <label>
+        <span>Type</span>
+        <input name="type" placeholder="Banarasi Saree" required type="text" />
+      </label>
+      <label>
+        <span>Variant</span>
+        <input name="variant" placeholder="Emerald Bridal Edit" type="text" />
       </label>
       <label>
         <span>Description</span>
-        <input name="description" placeholder="Describe the weave, finish, and occasion." required type="text" />
+        <input name="description" placeholder="Describe the weave, finish, and styling." required type="text" />
+      </label>
+      <label>
+        <span>Length</span>
+        <input name="length" placeholder="5.5 metres" type="text" />
+      </label>
+      <label>
+        <span>Colors</span>
+        <input name="colors" placeholder="Deep Green, Gold" type="text" />
       </label>
       <label>
         <span>Price</span>
         <input min="1" name="price" placeholder="42500" required type="number" />
       </label>
       <label>
-        <span>Compare At Price</span>
-        <input min="1" name="compareAtPrice" placeholder="51000" type="number" />
+        <span>SKU</span>
+        <input name="sku" placeholder="MANDALA-001" required type="text" />
       </label>
       <label>
-        <span>Inventory Count</span>
-        <input min="0" name="inventoryCount" placeholder="6" type="number" />
+        <span>Qty</span>
+        <input min="0" name="qty" placeholder="6" type="number" />
       </label>
       <label>
-        <span>Image URL</span>
-        <input name="imageUrl" placeholder="https://..." type="url" />
+        <span>Product Image</span>
+        <input
+          accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+          disabled={imageUploading}
+          onChange={handleImageChange}
+          ref={fileInputRef}
+          type="file"
+        />
       </label>
-      <label>
-        <span>Fabric</span>
-        <input name="fabric" placeholder="Silk" type="text" />
-      </label>
-      <label>
-        <span>Occasion</span>
-        <input name="occasion" placeholder="Wedding" type="text" />
-      </label>
-      <label>
-        <span>Color</span>
-        <input name="color" placeholder="Deep Green" type="text" />
-      </label>
+      {imageUploading ? <p className="admin-form-message">Uploading image...</p> : null}
+      {imagePreview && !imageUploading ? (
+        <div style={{ marginBottom: "0.5rem" }}>
+          <img alt="Preview" src={imagePreview} style={{ maxHeight: 120, maxWidth: 200, borderRadius: 6, border: "1px solid var(--admin-border)" }} />
+        </div>
+      ) : null}
 
       {state.success ? <p className="admin-form-message success">{state.success}</p> : null}
       {state.error ? <p className="admin-form-message error">{state.error}</p> : null}
