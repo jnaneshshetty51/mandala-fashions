@@ -1,0 +1,183 @@
+import { Router, type NextFunction, type Request, type Response } from "express";
+import { z } from "zod";
+
+import { requireRequestRole } from "@/server/auth/guards";
+import { listAdminProducts } from "@/server/admin/service";
+import {
+  adjustInventory,
+  deleteProduct,
+  getAdminProduct,
+  updateProduct
+} from "@/server/products/service";
+
+function asyncHandler(
+  handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>
+) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    void handler(req, res, next).catch(next);
+  };
+}
+
+const updateProductSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    price: z.number().positive().optional(),
+    compareAtPrice: z.number().positive().optional(),
+    imageUrl: z.string().url().optional(),
+    fabric: z.string().optional(),
+    occasion: z.string().optional(),
+    color: z.string().optional(),
+    inventoryCount: z.number().int().min(0).optional(),
+    status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided."
+  });
+
+const statusSchema = z.object({
+  status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"])
+});
+
+const inventorySchema = z.object({
+  delta: z.number().int()
+});
+
+export const adminProductsRouter = Router();
+
+// GET / — list all products
+adminProductsRouter.get(
+  "/",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const products = await listAdminProducts();
+    res.json({ data: products });
+  })
+);
+
+// GET /:id — get single product
+adminProductsRouter.get(
+  "/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const id = String(req.params["id"]);
+    const product = await getAdminProduct(id);
+
+    if (!product) {
+      res.status(404).json({ error: "Product not found." });
+      return;
+    }
+
+    res.json({ data: product });
+  })
+);
+
+// PUT /:id — update product
+adminProductsRouter.put(
+  "/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const id = String(req.params["id"]);
+
+    const parsed = updateProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid input.", details: parsed.error.flatten() });
+      return;
+    }
+
+    const existing = await getAdminProduct(id);
+    if (!existing) {
+      res.status(404).json({ error: "Product not found." });
+      return;
+    }
+
+    const product = await updateProduct(id, parsed.data);
+    res.json({ data: product });
+  })
+);
+
+// DELETE /:id — delete product
+adminProductsRouter.delete(
+  "/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const id = String(req.params["id"]);
+
+    const existing = await getAdminProduct(id);
+    if (!existing) {
+      res.status(404).json({ error: "Product not found." });
+      return;
+    }
+
+    try {
+      await deleteProduct(id);
+      res.json({ data: { deleted: true } });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("cannot be deleted")) {
+        res.status(409).json({ error: error.message });
+        return;
+      }
+      throw error;
+    }
+  })
+);
+
+// PATCH /:id/status — update status only
+adminProductsRouter.patch(
+  "/:id/status",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const id = String(req.params["id"]);
+
+    const parsed = statusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid status value.", details: parsed.error.flatten() });
+      return;
+    }
+
+    const existing = await getAdminProduct(id);
+    if (!existing) {
+      res.status(404).json({ error: "Product not found." });
+      return;
+    }
+
+    const product = await updateProduct(id, { status: parsed.data.status });
+    res.json({ data: product });
+  })
+);
+
+// PATCH /:id/inventory — adjust inventory by delta
+adminProductsRouter.patch(
+  "/:id/inventory",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const id = String(req.params["id"]);
+
+    const parsed = inventorySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid delta value.", details: parsed.error.flatten() });
+      return;
+    }
+
+    const existing = await getAdminProduct(id);
+    if (!existing) {
+      res.status(404).json({ error: "Product not found." });
+      return;
+    }
+
+    const result = await adjustInventory(id, parsed.data.delta);
+    res.json({ data: result });
+  })
+);

@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  STYLIST
+  ADMIN
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum InventoryMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  RESERVED
+  RELEASED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+enum BannerStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  phone        String?
+  addresses    Address[]
+  resetTokens  PasswordResetToken[]
+  orders       Order[]
+  notes        CustomerNote[]
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id             String               @id @default(cuid())
+  name           String
+  slug           String               @unique
+  sku            String               @unique
+  description    String
+  price          Decimal              @db.Decimal(10, 2)
+  compareAtPrice Decimal?             @db.Decimal(10, 2)
+  imageUrl       String?
+  fabric         String?
+  occasion       String?
+  color          String?
+  status         ProductStatus        @default(DRAFT)
+  inventoryCount Int                  @default(0)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  variants       ProductVariant[]
+  orderItems     OrderItem[]
+  movements      InventoryMovement[]
+}
+
+model ProductVariant {
+  id          String              @id @default(cuid())
+  productId   String
+  sku         String              @unique
+  name        String
+  color       String?
+  fabric      String?
+  size        String?
+  price       Decimal             @db.Decimal(10, 2)
+  stock       Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  product     Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  movements   InventoryMovement[]
+}
+
+model InventoryMovement {
+  id         String                @id @default(cuid())
+  productId  String?
+  variantId  String?
+  type       InventoryMovementType
+  quantity   Int
+  note       String?
+  createdAt  DateTime              @default(now())
+  product    Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant    ProductVariant?       @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  orderNumber     String       @unique
+  userId          String?
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  subtotal        Decimal      @db.Decimal(10, 2)
+  discountAmount  Decimal      @default(0) @db.Decimal(10, 2)
+  shippingAmount  Decimal      @default(0) @db.Decimal(10, 2)
+  totalAmount     Decimal      @db.Decimal(10, 2)
+  status          OrderStatus  @default(PENDING)
+  shippingAddress   String?
+  paymentMethod     String?
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  placedAt          DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id         String          @id @default(cuid())
+  orderId    String
+  productId  String
+  variantId  String?
+  quantity   Int
+  unitPrice  Decimal         @db.Decimal(10, 2)
+  totalPrice Decimal         @db.Decimal(10, 2)
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant    ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+}
+
+model Coupon {
+  id          String      @id @default(cuid())
+  code        String      @unique
+  label       String
+  type        CouponType
+  value       Decimal     @db.Decimal(10, 2)
+  minOrder    Decimal?    @db.Decimal(10, 2)
+  usageLimit  Int?
+  usedCount   Int         @default(0)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Banner {
+  id          String       @id @default(cuid())
+  title       String
+  subtitle    String?
+  imageUrl    String?
+  href        String?
+  placement   String
+  status      BannerStatus @default(DRAFT)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model CustomerNote {
+  id         String   @id @default(cuid())
+  userId      String
+  note        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String
+  name      String
+  phone     String?
+  line1     String
+  line2     String?
+  city      String
+  state     String?
+  pincode   String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
