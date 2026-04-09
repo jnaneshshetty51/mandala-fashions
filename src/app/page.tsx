@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ArchiveShell, ProductCard } from "@/components/archive-shell";
 import { EmailCaptureForm } from "@/components/forms/email-capture-form";
-import { archiveProducts } from "@/lib/archive-data";
+import { listCatalogProducts } from "@/server/catalog/service";
 
 const quickCategories = [
   { title: "Wedding", imagePath: "/homepage-assets/0a6485e6977f363e23f9f07ab63de243.jpg", href: "/shop?occasion=Wedding" },
@@ -99,9 +99,10 @@ const shoppingNeeds = [
   }
 ];
 
-export default function HomePage() {
-  const bestSellers = archiveProducts.slice(0, 4);
-  const newArrivals = archiveProducts.slice(2, 6);
+export default async function HomePage() {
+  const products = await listCatalogProducts();
+  const bestSellers = products.slice(0, 4);
+  const newArrivals = [...products].reverse().slice(0, 4);
 
   return (
     <ArchiveShell activeNav="shop">

@@ -70,6 +70,24 @@ type AdminAnalyticsSnapshot = {
     stockLevel: string;
     inquiryRate: string;
   };
+  catalogSummary: {
+    total: number;
+    active: number;
+    draft: number;
+    archived: number;
+    lowStock: number;
+    outOfStock: number;
+  };
+  recentProducts: Array<{
+    id: string;
+    name: string;
+    imageUrl: string | null;
+    price: number;
+    status: string;
+    fabric: string;
+    inventoryCount: number;
+    createdAt: string;
+  }>;
 };
 
 function toCurrency(value: number) {
@@ -359,10 +377,11 @@ export async function listAdminBanners(): Promise<AdminBannerRecord[]> {
 
 export async function getAdminAnalyticsSnapshot(): Promise<AdminAnalyticsSnapshot> {
   try {
-    const [products, orders, customers] = await Promise.all([
+    const [products, orders, customers, recentProducts] = await Promise.all([
       prisma.product.findMany({ include: { variants: true } }),
       prisma.order.findMany({ include: { items: true }, orderBy: { placedAt: "desc" }, take: 5 }),
-      prisma.user.findMany()
+      prisma.user.findMany(),
+      prisma.product.findMany({ orderBy: { createdAt: "desc" }, take: 6 })
     ]);
 
     const revenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
@@ -377,6 +396,12 @@ export async function getAdminAnalyticsSnapshot(): Promise<AdminAnalyticsSnapsho
     }
 
     const totalFabricCount = Array.from(fabricCounts.values()).reduce((sum, count) => sum + count, 0) || 1;
+
+    const activeCount = products.filter((p) => p.status === "ACTIVE").length;
+    const draftCount = products.filter((p) => p.status === "DRAFT").length;
+    const archivedCount = products.filter((p) => p.status === "ARCHIVED").length;
+    const lowStockCount = products.filter((p) => p.inventoryCount > 0 && p.inventoryCount <= 5).length;
+    const outOfStockCount = products.filter((p) => p.inventoryCount === 0).length;
 
     return {
       metrics: [
@@ -429,7 +454,25 @@ export async function getAdminAnalyticsSnapshot(): Promise<AdminAnalyticsSnapsho
         mostViewed: products[0]?.name ?? "Emerald Banarasi",
         stockLevel: `${products[0]?.inventoryCount ?? 3} units`,
         inquiryRate: "+45%"
-      }
+      },
+      catalogSummary: {
+        total: products.length,
+        active: activeCount,
+        draft: draftCount,
+        archived: archivedCount,
+        lowStock: lowStockCount,
+        outOfStock: outOfStockCount
+      },
+      recentProducts: recentProducts.map((p) => ({
+        id: p.id,
+        name: p.name,
+        imageUrl: p.imageUrl,
+        price: Number(p.price),
+        status: p.status,
+        fabric: p.fabric ?? "Unassigned",
+        inventoryCount: p.inventoryCount,
+        createdAt: toDateLabel(p.createdAt)
+      }))
     };
   } catch (error) {
     if (isPrismaUnavailable(error)) {
@@ -453,7 +496,9 @@ export async function getAdminAnalyticsSnapshot(): Promise<AdminAnalyticsSnapsho
           mostViewed: "Emerald Banarasi",
           stockLevel: "Low Stock (3)",
           inquiryRate: "+45%"
-        }
+        },
+        catalogSummary: { total: 0, active: 0, draft: 0, archived: 0, lowStock: 0, outOfStock: 0 },
+        recentProducts: []
       };
     }
 

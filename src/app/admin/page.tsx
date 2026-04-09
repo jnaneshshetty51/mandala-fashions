@@ -10,11 +10,20 @@ const toneMap = {
   Georgette: "tone-georgette"
 } as const;
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
 export default async function AdminPage() {
   const user = await requirePageRole(["ADMIN"]);
   const snapshot = await getAdminAnalyticsSnapshot();
   const totalRevenue = snapshot.recentOrders.reduce((sum, item) => sum + item.totalAmount, 0);
   const totalItems = snapshot.recentOrders.reduce((sum, item) => sum + item.itemCount, 0);
+  const { catalogSummary, recentProducts } = snapshot;
 
   return (
     <AdminLayout
@@ -96,6 +105,115 @@ export default async function AdminPage() {
         ))}
       </section>
 
+      {/* Catalog Health */}
+      <section className="admin-workbench" style={{ marginBottom: "1.5rem" }}>
+        <article className="admin-table-card" style={{ flex: 1 }}>
+          <div className="admin-card-header">
+            <div>
+              <h2>Catalog Health</h2>
+              <p>Live product status across your entire catalog.</p>
+            </div>
+            <Link href="/admin/products">Manage Catalog</Link>
+          </div>
+          <div className="admin-metric-grid" style={{ padding: "1rem 1.5rem", gap: "0.75rem" }}>
+            <article className="admin-metric-card">
+              <p>Total Products</p>
+              <h2>{catalogSummary.total}</h2>
+              <span className="admin-delta neutral">In your catalog</span>
+            </article>
+            <article className="admin-metric-card">
+              <p>Active</p>
+              <h2 style={{ color: "var(--admin-positive)" }}>{catalogSummary.active}</h2>
+              <span className="admin-delta positive">Live on storefront</span>
+            </article>
+            <article className="admin-metric-card">
+              <p>Draft</p>
+              <h2>{catalogSummary.draft}</h2>
+              <span className="admin-delta neutral">Not yet published</span>
+            </article>
+            <article className="admin-metric-card">
+              <p>Low Stock</p>
+              <h2 style={{ color: catalogSummary.lowStock > 0 ? "var(--admin-warning, #e6861a)" : undefined }}>
+                {catalogSummary.lowStock}
+              </h2>
+              <span className={`admin-delta ${catalogSummary.lowStock > 0 ? "negative" : "neutral"}`}>
+                {catalogSummary.lowStock > 0 ? "Need restocking" : "All well stocked"}
+              </span>
+            </article>
+            <article className="admin-metric-card">
+              <p>Out of Stock</p>
+              <h2 style={{ color: catalogSummary.outOfStock > 0 ? "#c0392b" : undefined }}>
+                {catalogSummary.outOfStock}
+              </h2>
+              <span className={`admin-delta ${catalogSummary.outOfStock > 0 ? "negative" : "positive"}`}>
+                {catalogSummary.outOfStock > 0 ? "Unavailable to buyers" : "No stockouts"}
+              </span>
+            </article>
+          </div>
+
+          {catalogSummary.total === 0 ? (
+            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid var(--admin-border)" }}>
+              <p style={{ color: "var(--admin-muted)", fontSize: "0.875rem" }}>
+                Your catalog is empty.{" "}
+                <Link href="/admin/products" style={{ color: "var(--admin-accent)" }}>
+                  Add your first product
+                </Link>{" "}
+                to start selling.
+              </p>
+            </div>
+          ) : null}
+        </article>
+      </section>
+
+      {/* Recent Products */}
+      {recentProducts.length > 0 ? (
+        <article className="admin-table-card" style={{ marginBottom: "1.5rem" }}>
+          <div className="admin-card-header">
+            <div>
+              <h2>Recently Added Products</h2>
+              <p>The last {recentProducts.length} products added to your catalog.</p>
+            </div>
+            <Link href="/admin/products">View All</Link>
+          </div>
+          <div className="admin-table">
+            <div className="admin-table-head admin-table-head-products admin-products-table-head">
+              <span>Product</span>
+              <span>Material</span>
+              <span>Price</span>
+              <span>Qty</span>
+              <span>Status</span>
+              <span>Added</span>
+              <span>Actions</span>
+            </div>
+            {recentProducts.map((product) => (
+              <div className="admin-table-row admin-products-table-row" key={product.id}>
+                <div className="admin-products-identity">
+                  <div
+                    className="admin-products-thumb"
+                    style={product.imageUrl ? { backgroundImage: `url('${product.imageUrl}')` } : undefined}
+                  />
+                  <strong>
+                    <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
+                  </strong>
+                </div>
+                <span>{product.fabric}</span>
+                <strong>{formatCurrency(product.price)}</strong>
+                <span className={product.inventoryCount <= 3 ? "admin-stock-pill is-low" : "admin-stock-pill"}>
+                  {product.inventoryCount}
+                </span>
+                <em className={`status-${product.status.toLowerCase()}`}>{product.status}</em>
+                <span>{product.createdAt}</span>
+                <span>
+                  <Link className="admin-secondary-button" href={`/admin/products/${product.id}`}>
+                    Edit
+                  </Link>
+                </span>
+              </div>
+            ))}
+          </div>
+        </article>
+      ) : null}
+
       <section className="admin-workbench">
         <article className="admin-chart-card admin-sales-card">
           <div className="admin-card-header">
@@ -146,14 +264,19 @@ export default async function AdminPage() {
               <Link href="/admin/products">Catalog</Link>
             </div>
             <div className="admin-weave-list">
-              {snapshot.topFabrics.map((item) => (
+              {snapshot.topFabrics.length > 0 ? snapshot.topFabrics.map((item) => (
                 <div className="admin-weave-row" key={item.name}>
                   <span>
                     <i className={toneMap[item.name as keyof typeof toneMap] ?? "tone-silk"} /> {item.name}
                   </span>
                   <strong>{item.share}</strong>
                 </div>
-              ))}
+              )) : (
+                <div className="admin-weave-row">
+                  <span>No products yet</span>
+                  <strong>—</strong>
+                </div>
+              )}
             </div>
           </article>
 
@@ -209,7 +332,11 @@ export default async function AdminPage() {
               <span>Items</span>
               <span>Value</span>
             </div>
-            {snapshot.recentOrders.map((item) => (
+            {snapshot.recentOrders.length === 0 ? (
+              <div style={{ padding: "1.5rem", color: "var(--admin-muted)", fontSize: "0.875rem" }}>
+                No orders yet. Orders will appear here as customers shop.
+              </div>
+            ) : snapshot.recentOrders.map((item) => (
               <div className="admin-table-row" key={item.id}>
                 <span>{item.orderNumber}</span>
                 <span className="admin-client-cell">
