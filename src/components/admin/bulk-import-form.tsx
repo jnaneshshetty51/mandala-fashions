@@ -237,11 +237,10 @@ export function BulkImportForm() {
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <button
               className="admin-primary-button"
-              disabled={status === "importing"}
               onClick={handleImport}
               type="button"
             >
-              {status === "importing" ? "Importing…" : `Import ${parsed.rows.length} Products`}
+              {`Import ${parsed.rows.length} Products`}
             </button>
             <button className="admin-secondary-button" onClick={handleReset} type="button">
               Cancel
