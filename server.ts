@@ -1,3 +1,7 @@
+// Must be first: Next.js 15 App Router requires AsyncLocalStorage on globalThis
+import { AsyncLocalStorage } from "node:async_hooks";
+(globalThis as unknown as Record<string, unknown>).AsyncLocalStorage ??= AsyncLocalStorage;
+
 import dotenv from "dotenv";
 import express from "express";
 import next from "next";
