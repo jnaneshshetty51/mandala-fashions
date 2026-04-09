@@ -28,10 +28,10 @@ export function AuthShell({ children, navigation, centerBrand = false }: AuthShe
           <Image
             alt="Mandala logo"
             className="brand-logo brand-logo-header"
-            height={136}
+            height={104}
             priority
             src="/homepage-assets/mandala.png"
-            width={210}
+            width={160}
           />
         </Link>
         <nav className="archive-nav auth-nav" aria-label="Primary">

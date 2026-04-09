@@ -60,10 +60,10 @@ export function ArchiveShell({ children, activeNav = "shop" }: ArchiveShellProps
           <Image
             alt="Mandala logo"
             className="brand-logo brand-logo-header"
-            height={136}
+            height={104}
             priority
             src="/homepage-assets/mandala.png"
-            width={210}
+            width={160}
           />
         </Link>
         <nav className="archive-nav" aria-label="Primary">
@@ -99,9 +99,9 @@ export function ArchiveShell({ children, activeNav = "shop" }: ArchiveShellProps
             <Image
               alt="Mandala footer logo"
               className="brand-logo"
-              height={162}
+              height={117}
               src="/homepage-assets/mandala.png"
-              width={250}
+              width={180}
             />
           </Link>
           <p>{siteConfig.footerCopy}</p>

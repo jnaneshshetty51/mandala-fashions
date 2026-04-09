@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+
+import { AdminImageManager } from "@/components/admin/admin-image-manager";
 
 type FormState = {
   isSubmitting: boolean;
@@ -18,8 +20,6 @@ export function ProductCreateForm() {
   });
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageUploading, setImageUploading] = useState(false);
-  const [imageUrlText, setImageUrlText] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -43,23 +43,24 @@ export function ProductCreateForm() {
 
       const nextImageUrls = [...imageUrls, ...uploadResults];
       setImageUrls(nextImageUrls);
-      setImageUrlText(nextImageUrls.join("\n"));
     } catch (error) {
       setState((s) => ({ ...s, error: error instanceof Error ? error.message : "Image upload failed." }));
-      if (fileInputRef.current) fileInputRef.current.value = "";
     } finally {
       setImageUploading(false);
     }
   }
 
   function handleImageUrlTextChange(value: string) {
-    setImageUrlText(value);
     setImageUrls(
       value
         .split("\n")
         .map((item) => item.trim())
         .filter(Boolean)
     );
+  }
+
+  function handleRemoveImage(index: number) {
+    setImageUrls((current) => current.filter((_, itemIndex) => itemIndex !== index));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -102,8 +103,6 @@ export function ProductCreateForm() {
 
     event.currentTarget.reset();
     setImageUrls([]);
-    setImageUrlText("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
 
     if (result?.data?.id) {
       router.push(`/admin/products/${result.data.id}`);
@@ -160,29 +159,13 @@ export function ProductCreateForm() {
         <span>Qty</span>
         <input min="0" name="qty" placeholder="6" type="number" />
       </label>
-      <label>
-        <span>Gallery Images</span>
-        <textarea
-          name="imageUrls"
-          onChange={(event) => handleImageUrlTextChange(event.target.value)}
-          placeholder={"Paste one image URL per line"}
-          rows={4}
-          value={imageUrlText}
-        />
-      </label>
-      <label>
-        <span>Upload Images</span>
-        <input
-          accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-          disabled={imageUploading}
-          multiple
-          onChange={handleImageChange}
-          ref={fileInputRef}
-          type="file"
-        />
-      </label>
-      {imageUploading ? <p className="admin-form-message">Uploading image...</p> : null}
-      {imageUrls.length > 0 ? <p className="admin-form-message">{imageUrls.length} image(s) attached.</p> : null}
+      <AdminImageManager
+        imageUploading={imageUploading}
+        imageUrls={imageUrls}
+        onImageChange={handleImageChange}
+        onImageUrlTextChange={handleImageUrlTextChange}
+        onRemoveImage={handleRemoveImage}
+      />
 
       {state.success ? <p className="admin-form-message success">{state.success}</p> : null}
       {state.error ? <p className="admin-form-message error">{state.error}</p> : null}

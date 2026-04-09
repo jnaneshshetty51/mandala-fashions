@@ -115,22 +115,24 @@ export default async function AdminProductDetailPage({
                 <strong>Colors:</strong> {product.color}
               </p>
             ) : null}
-            {product.imageUrl ? (
-              <p>
-                <strong>Primary Image:</strong>{" "}
-                <a href={product.imageUrl} rel="noopener noreferrer" target="_blank">
-                  {product.imageUrl}
-                </a>
-              </p>
-            ) : null}
-            {product.imageUrls.length > 1 ? (
+            {product.imageUrls.length > 0 ? (
               <div>
-                <strong>Gallery Images:</strong>
-                <div style={{ display: "grid", gap: "0.35rem", marginTop: "0.5rem" }}>
-                  {product.imageUrls.map((url) => (
-                    <a href={url} key={url} rel="noopener noreferrer" target="_blank">
-                      {url}
-                    </a>
+                <strong>Image Gallery:</strong>
+                <div className="admin-image-grid" style={{ marginTop: "0.75rem" }}>
+                  {product.imageUrls.map((url, index) => (
+                    <article className="admin-image-card" key={url}>
+                      <div
+                        className="admin-image-preview"
+                        style={{
+                          backgroundImage: `url('${url}')`,
+                          backgroundPosition: "center",
+                          backgroundSize: "cover"
+                        }}
+                      />
+                      <div className="admin-image-meta">
+                        <span>{index === 0 ? "Primary image" : `Image ${index + 1}`}</span>
+                      </div>
+                    </article>
                   ))}
                 </div>
               </div>

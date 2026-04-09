@@ -24,17 +24,30 @@ function isValidStatus(value: string): value is ValidStatus {
 export default async function AdminProductsPage({
   searchParams
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   const user = await requirePageRole(["ADMIN"]);
-  const { status } = await searchParams;
+  const { status, q = "" } = await searchParams;
 
   const statusFilter = status && isValidStatus(status.toUpperCase())
     ? (status.toUpperCase() as ValidStatus)
     : undefined;
+  const searchQuery = q.trim();
 
   const rawProducts = await prisma.product.findMany({
-    where: statusFilter ? { status: statusFilter } : {},
+    where: {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(searchQuery
+        ? {
+            OR: [
+              { name: { contains: searchQuery, mode: "insensitive" } },
+              { sku: { contains: searchQuery, mode: "insensitive" } },
+              { fabric: { contains: searchQuery, mode: "insensitive" } },
+              { occasion: { contains: searchQuery, mode: "insensitive" } }
+            ]
+          }
+        : {})
+    },
     include: { variants: true },
     orderBy: { updatedAt: "desc" },
     take: 50
@@ -58,6 +71,9 @@ export default async function AdminProductsPage({
 
   const totalVariants = allProducts.reduce((sum, p) => sum + p.variants.length, 0);
   const totalStock = allProducts.reduce((sum, p) => sum + p.inventoryCount, 0);
+  const activeCount = allProducts.filter((product) => product.status === "ACTIVE").length;
+  const draftCount = allProducts.filter((product) => product.status === "DRAFT").length;
+  const archivedCount = allProducts.filter((product) => product.status === "ARCHIVED").length;
 
   return (
     <AdminLayout
@@ -72,123 +88,162 @@ export default async function AdminProductsPage({
       ]}
       user={user}
     >
-      <section className="admin-metric-grid">
-        <article className="admin-metric-card">
-          <p>Total SKUs</p>
-          <h2>{allProducts.length}</h2>
-          <span className="admin-delta neutral">Base products in catalog</span>
-        </article>
-        <article className="admin-metric-card">
-          <p>Total Variants</p>
-          <h2>{totalVariants}</h2>
-          <span className="admin-delta neutral">Color and fabric combinations</span>
-        </article>
-        <article className="admin-metric-card">
-          <p>Total Stock</p>
-          <h2>{totalStock}</h2>
-          <span className="admin-delta positive">Inventory units across catalog</span>
-        </article>
-      </section>
-
-      <section className="admin-settings-layout">
-        <article className="admin-table-card">
-          <div className="admin-card-header">
-            <div>
-              <h2>Create Product</h2>
-              <p>Enter products using your inventory sheet fields and publish them directly to the storefront.</p>
-            </div>
-          </div>
-          <ProductCreateForm />
-        </article>
-
-        <article className="admin-growth-card">
-          <h2>Publishing Notes</h2>
-          <p>New products are created as active storefront items.</p>
-          <div className="guide-link-list">
-            <span>Fields now follow: Category, Material, Type, Variant, Description, Length, Colors, Price, SKU, Qty.</span>
-            <span>Slug is generated automatically from Type and Variant.</span>
-            <span>Qty controls store availability and checkout usage.</span>
-          </div>
-        </article>
-      </section>
-
-      <article className="admin-table-card">
-        <div className="admin-card-header">
+      <section className="admin-products-shell">
+        <div className="admin-products-header">
           <div>
-            <h2>Bulk Import from Excel</h2>
+            <p className="admin-eyebrow">Catalog Workspace</p>
+            <h2>Manage products, inventory, and merchandising from one place.</h2>
             <p>
-              Export your Excel sheet as CSV and upload here. Columns:{" "}
-              <strong>Category, Material, Type, Variant, Description, Length, Colors, Price, SKU, Qty</strong>.
+              Browse the current catalog, add new products quickly, bulk import sheet data, and jump
+              into edits without leaving the page.
             </p>
           </div>
+          <div className="admin-products-actions">
+            <Link className="admin-primary-button" href="#create-product">
+              Add Product
+            </Link>
+            <Link className="admin-ghost-button" href="#catalog-table">
+              Browse Catalog
+            </Link>
+          </div>
         </div>
-        <BulkImportForm />
-      </article>
 
-      <article className="admin-table-card">
-        <div className="admin-card-header">
-          <div>
-            <h2>Archive Catalog</h2>
-            <p>Manage products, merchandising state, and variant density.</p>
-          </div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <Link
-              className={!statusFilter ? "admin-primary-button" : "admin-secondary-button"}
-              href="/admin/products"
-            >
-              All
-            </Link>
-            <Link
-              className={statusFilter === "DRAFT" ? "admin-primary-button" : "admin-secondary-button"}
-              href="/admin/products?status=DRAFT"
-            >
-              Draft
-            </Link>
-            <Link
-              className={statusFilter === "ACTIVE" ? "admin-primary-button" : "admin-secondary-button"}
-              href="/admin/products?status=ACTIVE"
-            >
-              Active
-            </Link>
-            <Link
-              className={statusFilter === "ARCHIVED" ? "admin-primary-button" : "admin-secondary-button"}
-              href="/admin/products?status=ARCHIVED"
-            >
-              Archived
-            </Link>
-          </div>
-        </div>
-        <div className="admin-table">
-          <div className="admin-table-head admin-table-head-products">
-            <span>Product</span>
-            <span>SKU</span>
-            <span>Material</span>
+        <section className="admin-products-stats">
+          <article className="admin-products-stat-card">
+            <span>Total products</span>
+            <strong>{allProducts.length}</strong>
+            <small>Base products in catalog</small>
+          </article>
+          <article className="admin-products-stat-card">
             <span>Variants</span>
-            <span>Qty</span>
-            <span>Status</span>
-            <span>Price</span>
-            <span>Actions</span>
-          </div>
-          {products.map((product) => (
-            <div className="admin-table-row admin-table-row-products" key={product.id}>
-              <strong>
-                <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
-              </strong>
-              <span>{product.sku}</span>
-              <span>{product.material}</span>
-              <span>{product.variants}</span>
-              <span>{product.inventoryCount}</span>
-              <em className={`status-${product.status.toLowerCase()}`}>{product.status}</em>
-              <strong>{formatCurrency(product.price)}</strong>
-              <span>
-                <Link className="admin-secondary-button" href={`/admin/products/${product.id}`}>
-                  Edit
-                </Link>
-              </span>
+            <strong>{totalVariants}</strong>
+            <small>Attached variant records</small>
+          </article>
+          <article className="admin-products-stat-card">
+            <span>Total qty</span>
+            <strong>{totalStock}</strong>
+            <small>Inventory units across catalog</small>
+          </article>
+          <article className="admin-products-stat-card">
+            <span>Live products</span>
+            <strong>{activeCount}</strong>
+            <small>{draftCount} draft, {archivedCount} archived</small>
+          </article>
+        </section>
+
+        <section className="admin-products-grid">
+          <article className="admin-products-surface" id="create-product">
+            <div className="admin-card-header">
+              <div>
+                <h2>Create Product</h2>
+                <p>Use your inventory-sheet fields and publish directly to the storefront.</p>
+              </div>
             </div>
-          ))}
-        </div>
-      </article>
+            <ProductCreateForm />
+          </article>
+
+          <article className="admin-products-surface">
+            <div className="admin-card-header">
+              <div>
+                <h2>Bulk Import</h2>
+                <p>Paste or upload rows from your sheet with the same product structure.</p>
+              </div>
+            </div>
+            <BulkImportForm />
+          </article>
+        </section>
+
+        <article className="admin-products-surface" id="catalog-table">
+          <div className="admin-card-header">
+            <div>
+              <h2>Product Catalog</h2>
+              <p>Filter by status, search by product/SKU/material, and jump to edits quickly.</p>
+            </div>
+          </div>
+
+          <div className="admin-products-toolbar">
+            <form action="/admin/products" className="admin-products-search">
+              {statusFilter ? <input name="status" type="hidden" value={statusFilter} /> : null}
+              <span className="icon-search" />
+              <input defaultValue={searchQuery} name="q" placeholder="Search by product, SKU, material..." type="text" />
+            </form>
+
+            <div className="admin-products-filters">
+              <Link
+                className={!statusFilter ? "admin-products-filter is-active" : "admin-products-filter"}
+                href={searchQuery ? `/admin/products?q=${encodeURIComponent(searchQuery)}` : "/admin/products"}
+              >
+                All
+              </Link>
+              <Link
+                className={statusFilter === "ACTIVE" ? "admin-products-filter is-active" : "admin-products-filter"}
+                href={searchQuery ? `/admin/products?status=ACTIVE&q=${encodeURIComponent(searchQuery)}` : "/admin/products?status=ACTIVE"}
+              >
+                Active
+              </Link>
+              <Link
+                className={statusFilter === "DRAFT" ? "admin-products-filter is-active" : "admin-products-filter"}
+                href={searchQuery ? `/admin/products?status=DRAFT&q=${encodeURIComponent(searchQuery)}` : "/admin/products?status=DRAFT"}
+              >
+                Draft
+              </Link>
+              <Link
+                className={statusFilter === "ARCHIVED" ? "admin-products-filter is-active" : "admin-products-filter"}
+                href={searchQuery ? `/admin/products?status=ARCHIVED&q=${encodeURIComponent(searchQuery)}` : "/admin/products?status=ARCHIVED"}
+              >
+                Archived
+              </Link>
+            </div>
+          </div>
+
+          <div className="admin-products-table-meta">
+            <span>{products.length} result{products.length === 1 ? "" : "s"}</span>
+            {searchQuery ? <span>Searching for "{searchQuery}"</span> : null}
+            {statusFilter ? <span>Status: {statusFilter}</span> : null}
+          </div>
+
+          <div className="admin-table admin-products-table">
+            <div className="admin-table-head admin-table-head-products admin-products-table-head">
+              <span>Product</span>
+              <span>SKU</span>
+              <span>Material</span>
+              <span>Variants</span>
+              <span>Qty</span>
+              <span>Status</span>
+              <span>Price</span>
+              <span>Actions</span>
+            </div>
+            {products.length === 0 ? (
+              <div className="admin-products-empty">
+                <strong>No products match the current filters.</strong>
+                <span>Try a different search, or clear the filter to view the full catalog.</span>
+              </div>
+            ) : (
+              products.map((product) => (
+                <div className="admin-table-row admin-table-row-products admin-products-table-row" key={product.id}>
+                  <div className="admin-products-main-cell">
+                    <strong>
+                      <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
+                    </strong>
+                    <span>{product.material}</span>
+                  </div>
+                  <span>{product.sku}</span>
+                  <span>{product.material}</span>
+                  <span>{product.variants}</span>
+                  <span>{product.inventoryCount}</span>
+                  <em className={`status-${product.status.toLowerCase()}`}>{product.status}</em>
+                  <strong>{formatCurrency(product.price)}</strong>
+                  <span>
+                    <Link className="admin-secondary-button" href={`/admin/products/${product.id}`}>
+                      Edit
+                    </Link>
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </article>
+      </section>
     </AdminLayout>
   );
 }
