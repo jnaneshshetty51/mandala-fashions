@@ -11,6 +11,7 @@ type UpdateProductInput = {
   price?: number;
   sku?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   qty?: number;
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
 };
@@ -51,6 +52,59 @@ function splitProductDescription(description: string) {
   };
 }
 
+function composeProductContent(input: {
+  description: string;
+  length?: string;
+  imageUrls?: string[];
+}) {
+  const cleanDescription = input.description.trim();
+  const cleanLength = input.length?.trim();
+  const cleanImageUrls = (input.imageUrls ?? []).map((item) => item.trim()).filter(Boolean);
+  const parts = [cleanDescription];
+
+  if (cleanLength) {
+    parts.push(`Length: ${cleanLength}`);
+  }
+
+  if (cleanImageUrls.length > 0) {
+    parts.push(`Gallery: ${JSON.stringify(cleanImageUrls)}`);
+  }
+
+  return parts.join("\n\n");
+}
+
+function splitProductContent(content: string) {
+  const sections = content.split(/\n\n+/);
+  let description = "";
+  let length = "";
+  let imageUrls: string[] = [];
+
+  for (const section of sections) {
+    if (section.startsWith("Length: ")) {
+      length = section.replace("Length: ", "").trim();
+      continue;
+    }
+
+    if (section.startsWith("Gallery: ")) {
+      try {
+        const parsed = JSON.parse(section.replace("Gallery: ", "").trim()) as string[];
+        imageUrls = parsed.filter(Boolean);
+      } catch {
+        imageUrls = [];
+      }
+      continue;
+    }
+
+    description = description ? `${description}\n\n${section}` : section;
+  }
+
+  return {
+    description: description.trim(),
+    length,
+    imageUrls
+  };
+}
+
 export async function getAdminProduct(id: string) {
   const product = await prisma.product.findUnique({
     where: { id },
@@ -60,7 +114,7 @@ export async function getAdminProduct(id: string) {
   if (!product) return null;
 
   const nameParts = splitProductName(product.name);
-  const descriptionParts = splitProductDescription(product.description);
+  const contentParts = splitProductContent(product.description);
 
   return {
     ...product,
@@ -68,10 +122,11 @@ export async function getAdminProduct(id: string) {
     material: product.fabric,
     type: nameParts.type,
     variant: nameParts.variant,
-    description: descriptionParts.description,
-    length: descriptionParts.length,
+    description: contentParts.description,
+    length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
+    imageUrls: contentParts.imageUrls.length > 0 ? contentParts.imageUrls : product.imageUrl ? [product.imageUrl] : [],
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };
@@ -87,11 +142,17 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   }
 
   const existingNameParts = splitProductName(existing.name);
-  const existingDescriptionParts = splitProductDescription(existing.description);
+  const existingContentParts = splitProductContent(existing.description);
   const nextType = input.type ?? existingNameParts.type;
   const nextVariant = input.variant ?? existingNameParts.variant;
-  const nextDescription = input.description ?? existingDescriptionParts.description;
-  const nextLength = input.length ?? existingDescriptionParts.length;
+  const nextDescription = input.description ?? existingContentParts.description;
+  const nextLength = input.length ?? existingContentParts.length;
+  const nextImageUrls =
+    input.imageUrls !== undefined ? input.imageUrls : existingContentParts.imageUrls.length > 0
+      ? existingContentParts.imageUrls
+      : existing.imageUrl
+        ? [existing.imageUrl]
+        : [];
 
   const product = await prisma.product.update({
     where: { id },
@@ -99,12 +160,18 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
       ...((input.type !== undefined || input.variant !== undefined) && {
         name: composeProductName(nextType, nextVariant)
       }),
-      ...((input.description !== undefined || input.length !== undefined) && {
-        description: composeProductDescription(nextDescription, nextLength)
+      ...((input.description !== undefined || input.length !== undefined || input.imageUrls !== undefined) && {
+        description: composeProductContent({
+          description: nextDescription,
+          length: nextLength,
+          imageUrls: nextImageUrls
+        })
       }),
       ...(input.price !== undefined && { price: input.price }),
       ...(input.sku !== undefined && { sku: input.sku.trim() }),
-      ...(input.imageUrl !== undefined && { imageUrl: input.imageUrl }),
+      ...((input.imageUrl !== undefined || input.imageUrls !== undefined) && {
+        imageUrl: input.imageUrls?.[0] ?? input.imageUrl ?? null
+      }),
       ...(input.material !== undefined && { fabric: input.material.trim() }),
       ...(input.category !== undefined && { occasion: input.category.trim() }),
       ...(input.colors !== undefined && { color: input.colors.trim() }),
@@ -114,7 +181,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   });
 
   const nameParts = splitProductName(product.name);
-  const descriptionParts = splitProductDescription(product.description);
+  const contentParts = splitProductContent(product.description);
 
   return {
     ...product,
@@ -122,10 +189,11 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     material: product.fabric,
     type: nameParts.type,
     variant: nameParts.variant,
-    description: descriptionParts.description,
-    length: descriptionParts.length,
+    description: contentParts.description,
+    length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
+    imageUrls: contentParts.imageUrls.length > 0 ? contentParts.imageUrls : product.imageUrl ? [product.imageUrl] : [],
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };
@@ -172,6 +240,7 @@ type CreateProductInput = {
   price: number;
   sku: string;
   imageUrl?: string;
+  imageUrls?: string[];
   qty?: number;
 };
 
@@ -265,7 +334,12 @@ export async function bulkImportProducts(rows: BulkImportRow[]) {
 
 export async function createProduct(input: CreateProductInput) {
   const name = composeProductName(input.type, input.variant);
-  const description = composeProductDescription(input.description, input.length);
+  const imageUrls = (input.imageUrls ?? []).map((item) => item.trim()).filter(Boolean);
+  const description = composeProductContent({
+    description: input.description,
+    length: input.length,
+    imageUrls
+  });
 
   const baseSlug = name
     .toLowerCase()
@@ -290,7 +364,7 @@ export async function createProduct(input: CreateProductInput) {
       sku: input.sku.trim(),
       description,
       price: input.price,
-      imageUrl: input.imageUrl,
+      imageUrl: imageUrls[0] ?? input.imageUrl,
       fabric: input.material.trim(),
       occasion: input.category.trim(),
       color: input.colors?.trim(),
@@ -300,7 +374,7 @@ export async function createProduct(input: CreateProductInput) {
   });
 
   const nameParts = splitProductName(product.name);
-  const descriptionParts = splitProductDescription(product.description);
+  const contentParts = splitProductContent(product.description);
 
   return {
     ...product,
@@ -308,10 +382,11 @@ export async function createProduct(input: CreateProductInput) {
     material: product.fabric,
     type: nameParts.type,
     variant: nameParts.variant,
-    description: descriptionParts.description,
-    length: descriptionParts.length,
+    description: contentParts.description,
+    length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
+    imageUrls: contentParts.imageUrls.length > 0 ? contentParts.imageUrls : product.imageUrl ? [product.imageUrl] : [],
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };

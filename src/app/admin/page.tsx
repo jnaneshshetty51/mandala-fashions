@@ -13,28 +13,76 @@ const toneMap = {
 export default async function AdminPage() {
   const user = await requirePageRole(["ADMIN"]);
   const snapshot = await getAdminAnalyticsSnapshot();
+  const totalRevenue = snapshot.recentOrders.reduce((sum, item) => sum + item.totalAmount, 0);
+  const totalItems = snapshot.recentOrders.reduce((sum, item) => sum + item.itemCount, 0);
 
   return (
     <AdminLayout
       active="analytics"
-      createLabel="Seed Archive Data"
-      eyebrow="Performance Oversight"
-      title="Heritage Analytics"
+      createLabel="Create Product"
+      eyebrow="Admin Workspace"
+      title="Dashboard Overview"
       topNav={[
-        { label: "Inventory", href: "/admin/products" },
-        { label: "Variants", href: "/admin/products" },
-        { label: "Suppliers", href: "/admin/content" }
+        { label: "Orders", href: "/admin/orders" },
+        { label: "Products", href: "/admin/products" },
+        { label: "Customers", href: "/admin/customers" }
       ]}
       user={user}
     >
-      <div className="admin-header-actions">
-        <button className="admin-ghost-button" type="button">
-          Last 30 Days
-        </button>
-        <button className="admin-primary-button" type="button">
-          Export Report
-        </button>
-      </div>
+      <section className="admin-hero-panel">
+        <div className="admin-hero-copy">
+          <p className="admin-eyebrow">Today at a glance</p>
+          <h2>Everything important is one scroll away.</h2>
+          <p>
+            Monitor sales, inventory movement, customer activity, and merchandising health from one
+            workspace designed for day-to-day store operations.
+          </p>
+
+          <div className="admin-action-row">
+            <Link className="admin-primary-button" href="/admin/products">
+              Add Product
+            </Link>
+            <Link className="admin-ghost-button" href="/admin/orders">
+              Review Orders
+            </Link>
+            <Link className="admin-ghost-button" href="/admin/customers">
+              Open Customers
+            </Link>
+          </div>
+        </div>
+
+        <div className="admin-hero-meta">
+          <div className="admin-kpi-strip">
+            <article className="admin-kpi-item">
+              <span>Revenue Snapshot</span>
+              <strong>
+                {new Intl.NumberFormat("en-IN", {
+                  style: "currency",
+                  currency: "INR",
+                  maximumFractionDigits: 0
+                }).format(totalRevenue)}
+              </strong>
+              <small>From the latest listed orders</small>
+            </article>
+            <article className="admin-kpi-item">
+              <span>Units Moving</span>
+              <strong>{totalItems}</strong>
+              <small>Items across recent orders</small>
+            </article>
+            <article className="admin-kpi-item">
+              <span>Best Selling Fabric</span>
+              <strong>{snapshot.topFabrics[0]?.name ?? "Silk"}</strong>
+              <small>{snapshot.topFabrics[0]?.share ?? "Stable mix"}</small>
+            </article>
+          </div>
+
+          <div className="admin-chip-list">
+            <span>Live catalog monitoring</span>
+            <span>Quick order handling</span>
+            <span>Customer context visible</span>
+          </div>
+        </div>
+      </section>
 
       <section className="admin-metric-grid">
         {snapshot.metrics.map((metric) => (
@@ -48,12 +96,12 @@ export default async function AdminPage() {
         ))}
       </section>
 
-      <section className="admin-chart-row">
+      <section className="admin-workbench">
         <article className="admin-chart-card admin-sales-card">
           <div className="admin-card-header">
             <div>
-              <h2>Sales Heritage</h2>
-              <p>Track order movement, collection performance, and retail health.</p>
+              <h2>Sales Performance</h2>
+              <p>Track order movement, revenue direction, and month-on-month demand changes.</p>
             </div>
             <div className="admin-legend">
               <span>
@@ -76,36 +124,60 @@ export default async function AdminPage() {
               <span>Jun</span>
             </div>
           </div>
+          <div className="admin-chart-footer">
+            <div>
+              <strong>Conversion momentum</strong>
+              <span>Healthy repeat activity across current catalog traffic.</span>
+            </div>
+            <div>
+              <strong>Primary focus</strong>
+              <span>Protect top sellers from low-stock drop-offs.</span>
+            </div>
+          </div>
         </article>
 
-        <article className="admin-topweaves-card">
-          <h2>Top Weaves</h2>
-          <p>Live product mix across current inventory.</p>
-          <div className="admin-topweaves-visual">
-            <div className="weave-shape" />
-            <strong>{snapshot.topFabrics.length || 3}</strong>
-            <span>Segments</span>
-          </div>
-          <div className="admin-weave-list">
-            {snapshot.topFabrics.map((item) => (
-              <div className="admin-weave-row" key={item.name}>
-                <span>
-                  <i className={toneMap[item.name as keyof typeof toneMap] ?? "tone-silk"} /> {item.name}
-                </span>
-                <strong>{item.share}</strong>
+        <div className="admin-side-stack">
+          <article className="admin-topweaves-card">
+            <div className="admin-card-header">
+              <div>
+                <h2>Product Mix</h2>
+                <p>Top materials and merchandising balance across active catalog demand.</p>
               </div>
-            ))}
-          </div>
-          <Link className="admin-floating-plus" href="/admin/products">
-            +
-          </Link>
-        </article>
+              <Link href="/admin/products">Catalog</Link>
+            </div>
+            <div className="admin-weave-list">
+              {snapshot.topFabrics.map((item) => (
+                <div className="admin-weave-row" key={item.name}>
+                  <span>
+                    <i className={toneMap[item.name as keyof typeof toneMap] ?? "tone-silk"} /> {item.name}
+                  </span>
+                  <strong>{item.share}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="admin-growth-card">
+            <h2>Operational Focus</h2>
+            <p>Fast links for the tasks the team is most likely to handle next.</p>
+            <div className="admin-quick-links">
+              <Link href="/admin/orders">Process pending orders</Link>
+              <Link href="/admin/products">Update inventory and pricing</Link>
+              <Link href="/admin/customers">Review customer activity</Link>
+              <Link href="/admin/content">Refresh banners and content</Link>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section className="admin-lower-grid">
         <article className="admin-growth-card">
-          <h2>Patron Growth</h2>
-          <p>New account registrations and CRM growth.</p>
+          <div className="admin-card-header">
+            <div>
+              <h2>Customer Growth</h2>
+              <p>New member movement and CRM expansion over the current cycle.</p>
+            </div>
+          </div>
           <div className="admin-bar-chart">
             <span className="bar-1" />
             <span className="bar-2" />
@@ -113,12 +185,19 @@ export default async function AdminPage() {
             <span className="bar-4" />
             <span className="bar-5" />
           </div>
+          <div className="admin-mini-list">
+            <div>
+              <strong>Stronger mid-month growth</strong>
+              <span>Customer acquisition peaks after campaign pushes.</span>
+            </div>
+          </div>
         </article>
 
         <article className="admin-table-card">
           <div className="admin-card-header">
             <div>
               <h2>Recent Orders</h2>
+              <p>Most recent transactions that may need fulfillment or follow-up.</p>
             </div>
             <Link href="/admin/orders">View All Orders</Link>
           </div>
@@ -153,8 +232,8 @@ export default async function AdminPage() {
       </section>
 
       <section className="admin-spotlight-card">
-        <div className="admin-spotlight-image" />
         <div className="admin-spotlight-copy">
+          <p className="admin-eyebrow">Merchandising Spotlight</p>
           <h2>{snapshot.spotlight.title}</h2>
           <p>{snapshot.spotlight.description}</p>
           <div className="admin-spotlight-stats">
@@ -171,6 +250,21 @@ export default async function AdminPage() {
               <strong>{snapshot.spotlight.inquiryRate}</strong>
             </div>
           </div>
+        </div>
+        <div className="admin-spotlight-summary">
+          <div className="admin-mini-list">
+            <div>
+              <strong>Recommended action</strong>
+              <span>Replenish high-intent products before the next marketing push.</span>
+            </div>
+            <div>
+              <strong>Why it matters</strong>
+              <span>Traffic is already there, so inventory and response speed will decide conversion.</span>
+            </div>
+          </div>
+          <Link className="admin-primary-button" href="/admin/products">
+            Open Product Inventory
+          </Link>
         </div>
       </section>
     </AdminLayout>

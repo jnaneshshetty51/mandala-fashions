@@ -43,6 +43,37 @@ function inferDescription(description: string) {
   return description.length > 0 ? description : "An archive addition crafted for ceremonial and everyday elegance.";
 }
 
+function splitCatalogContent(content: string) {
+  const sections = content.split(/\n\n+/);
+  let description = "";
+  let length = "";
+  let imageUrls: string[] = [];
+
+  for (const section of sections) {
+    if (section.startsWith("Length: ")) {
+      length = section.replace("Length: ", "").trim();
+      continue;
+    }
+
+    if (section.startsWith("Gallery: ")) {
+      try {
+        imageUrls = (JSON.parse(section.replace("Gallery: ", "").trim()) as string[]).filter(Boolean);
+      } catch {
+        imageUrls = [];
+      }
+      continue;
+    }
+
+    description = description ? `${description}\n\n${section}` : section;
+  }
+
+  return {
+    description: description.trim(),
+    length,
+    imageUrls
+  };
+}
+
 function toCatalogProduct(product: {
   id: string;
   slug: string;
@@ -55,6 +86,7 @@ function toCatalogProduct(product: {
   occasion?: string | null;
   color?: string | null;
 }, index: number): CatalogProduct {
+  const content = splitCatalogContent(product.description);
   const price = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -77,8 +109,8 @@ function toCatalogProduct(product: {
     }).format(compareAt),
     discountLabel: `${Math.max(10, Math.round(((compareAt - product.price) / compareAt) * 100))}% off`,
     artClass: inferArtClass(index),
-    imageUrl: product.imageUrl,
-    galleryImages: product.imageUrl ? [product.imageUrl, product.imageUrl, product.imageUrl] : [],
+    imageUrl: content.imageUrls[0] ?? product.imageUrl,
+    galleryImages: content.imageUrls.length > 0 ? content.imageUrls : product.imageUrl ? [product.imageUrl, product.imageUrl, product.imageUrl] : [],
     category: `${inferOccasion(product.occasion)} Sarees`,
     fabric: inferFabric(product.fabric),
     occasion: inferOccasion(product.occasion),
@@ -100,14 +132,14 @@ function toCatalogProduct(product: {
         }).format(product.price + 750)
       }
     ],
-    length: "5.5 metres",
+    length: content.length || "5.5 metres",
     blouse: "Unstitched blouse piece available on request",
     delivery: "Delivered in 3-5 business days",
     codNote: "COD available for selected pincodes",
     rating: "4.7",
     reviews: 18 + index * 7,
     note: `${product.name} is part of the Mandala archive catalog.`,
-    description: inferDescription(product.description),
+    description: inferDescription(content.description),
     details: [inferFabric(product.fabric), "Archive-finished drape", "Boutique quality assurance"],
     styling: [
       "Pair with a matching blouse piece",

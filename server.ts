@@ -78,6 +78,7 @@ const productSchema = z.object({
   sku: z.string().min(2),
   qty: z.coerce.number().int().min(0).optional(),
   imageUrl: z.string().url().optional(),
+  imageUrls: z.array(z.string().url()).optional(),
 });
 
 const orderSchema = z.object({

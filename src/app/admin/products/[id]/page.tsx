@@ -5,7 +5,7 @@ import { AdminLayout } from "@/components/admin/admin-layout";
 import { ProductDeleteButton } from "@/components/admin/product-delete-button";
 import { ProductEditForm } from "@/components/admin/product-edit-form";
 import { requirePageRole } from "@/server/auth/guards";
-import { prisma } from "@/server/db";
+import { getAdminProduct } from "@/server/products/service";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -23,10 +23,7 @@ export default async function AdminProductDetailPage({
   const { id } = await params;
   const user = await requirePageRole(["ADMIN"]);
 
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: { variants: true }
-  });
+  const product = await getAdminProduct(id);
 
   if (!product) {
     notFound();
@@ -120,11 +117,23 @@ export default async function AdminProductDetailPage({
             ) : null}
             {product.imageUrl ? (
               <p>
-                <strong>Image:</strong>{" "}
+                <strong>Primary Image:</strong>{" "}
                 <a href={product.imageUrl} rel="noopener noreferrer" target="_blank">
                   {product.imageUrl}
                 </a>
               </p>
+            ) : null}
+            {product.imageUrls.length > 1 ? (
+              <div>
+                <strong>Gallery Images:</strong>
+                <div style={{ display: "grid", gap: "0.35rem", marginTop: "0.5rem" }}>
+                  {product.imageUrls.map((url) => (
+                    <a href={url} key={url} rel="noopener noreferrer" target="_blank">
+                      {url}
+                    </a>
+                  ))}
+                </div>
+              </div>
             ) : null}
           </div>
         </article>
@@ -161,6 +170,7 @@ export default async function AdminProductDetailPage({
             sku: product.sku,
             qty: product.inventoryCount,
             imageUrl: product.imageUrl,
+            imageUrls: product.imageUrls,
             status: product.status as "DRAFT" | "ACTIVE" | "ARCHIVED"
           }}
         />

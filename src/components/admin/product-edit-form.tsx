@@ -17,6 +17,7 @@ type ProductEditFormProps = {
     sku: string;
     qty: number;
     imageUrl: string | null;
+    imageUrls?: string[];
     status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   };
 };
@@ -41,34 +42,50 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     success: null
   });
 
-  const [imageUrl, setImageUrl] = useState<string>(product.imageUrl ?? "");
+  const [imageUrls, setImageUrls] = useState<string[]>(product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []));
   const [imageUploading, setImageUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(product.imageUrl ?? null);
+  const [imageUrlText, setImageUrlText] = useState((product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : [])).join("\n"));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImagePreview(URL.createObjectURL(file));
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
     setImageUploading(true);
+    setState((s) => ({ ...s, error: null }));
+    try {
+      const uploadResults = await Promise.all(files.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
 
-    const formData = new FormData();
-    formData.append("file", file);
+        const response = await fetch("/api/uploads", { method: "POST", body: formData });
+        const result = (await response.json().catch(() => null)) as { data?: { url: string }; error?: string } | null;
 
-    const response = await fetch("/api/uploads", { method: "POST", body: formData });
-    const result = (await response.json().catch(() => null)) as { data?: { url: string }; error?: string } | null;
+        if (!response.ok || !result?.data?.url) {
+          throw new Error(result?.error ?? "Image upload failed.");
+        }
 
-    setImageUploading(false);
+        return result.data.url;
+      }));
 
-    if (!response.ok || !result?.data?.url) {
-      setState((s) => ({ ...s, error: result?.error ?? "Image upload failed." }));
-      setImagePreview(product.imageUrl ?? null);
+      const nextImageUrls = [...imageUrls, ...uploadResults];
+      setImageUrls(nextImageUrls);
+      setImageUrlText(nextImageUrls.join("\n"));
+    } catch (error) {
+      setState((s) => ({ ...s, error: error instanceof Error ? error.message : "Image upload failed." }));
       if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
+    } finally {
+      setImageUploading(false);
     }
+  }
 
-    setImageUrl(result.data.url);
+  function handleImageUrlTextChange(value: string) {
+    setImageUrlText(value);
+    setImageUrls(
+      value
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    );
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -90,7 +107,8 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
       qty: Number(formData.get("qty") ?? 0)
     };
 
-    if (imageUrl) payload.imageUrl = imageUrl;
+    payload.imageUrls = imageUrls;
+    payload.imageUrl = imageUrls[0];
 
     const response = await fetch(`/api/admin/products/${product.id}`, {
       method: "PUT",
@@ -200,22 +218,29 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
           <span>Qty</span>
           <input defaultValue={product.qty} min="0" name="qty" type="number" />
         </label>
-        <label>
-          <span>Product Image</span>
-          <input
-            accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-            disabled={imageUploading}
-            onChange={handleImageChange}
-            ref={fileInputRef}
-            type="file"
-          />
-        </label>
-        {imageUploading ? <p className="admin-form-message">Uploading image...</p> : null}
-        {imagePreview && !imageUploading ? (
-          <div style={{ marginBottom: "0.5rem" }}>
-            <img alt="Preview" src={imagePreview} style={{ maxHeight: 120, maxWidth: 200, borderRadius: 6, border: "1px solid var(--admin-border)" }} />
-          </div>
-        ) : null}
+      <label>
+        <span>Gallery Images</span>
+        <textarea
+          name="imageUrls"
+          onChange={(event) => handleImageUrlTextChange(event.target.value)}
+          placeholder={"Paste one image URL per line"}
+          rows={4}
+          value={imageUrlText}
+        />
+      </label>
+      <label>
+        <span>Upload Images</span>
+        <input
+          accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+          disabled={imageUploading}
+          multiple
+          onChange={handleImageChange}
+          ref={fileInputRef}
+          type="file"
+        />
+      </label>
+      {imageUploading ? <p className="admin-form-message">Uploading image...</p> : null}
+      {imageUrls.length > 0 ? <p className="admin-form-message">{imageUrls.length} image(s) attached.</p> : null}
         <label>
           <span>Status</span>
           <select defaultValue={product.status} name="status">

@@ -16,34 +16,50 @@ export function ProductCreateForm() {
     error: null,
     success: null
   });
-  const [imageUrl, setImageUrl] = useState<string>("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageUploading, setImageUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrlText, setImageUrlText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImagePreview(URL.createObjectURL(file));
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
     setImageUploading(true);
+    setState((s) => ({ ...s, error: null }));
+    try {
+      const uploadResults = await Promise.all(files.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
 
-    const formData = new FormData();
-    formData.append("file", file);
+        const response = await fetch("/api/uploads", { method: "POST", body: formData });
+        const result = (await response.json().catch(() => null)) as { data?: { url: string }; error?: string } | null;
 
-    const response = await fetch("/api/uploads", { method: "POST", body: formData });
-    const result = (await response.json().catch(() => null)) as { data?: { url: string }; error?: string } | null;
+        if (!response.ok || !result?.data?.url) {
+          throw new Error(result?.error ?? "Image upload failed.");
+        }
 
-    setImageUploading(false);
+        return result.data.url;
+      }));
 
-    if (!response.ok || !result?.data?.url) {
-      setState((s) => ({ ...s, error: result?.error ?? "Image upload failed." }));
-      setImagePreview(null);
+      const nextImageUrls = [...imageUrls, ...uploadResults];
+      setImageUrls(nextImageUrls);
+      setImageUrlText(nextImageUrls.join("\n"));
+    } catch (error) {
+      setState((s) => ({ ...s, error: error instanceof Error ? error.message : "Image upload failed." }));
       if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
+    } finally {
+      setImageUploading(false);
     }
+  }
 
-    setImageUrl(result.data.url);
+  function handleImageUrlTextChange(value: string) {
+    setImageUrlText(value);
+    setImageUrls(
+      value
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    );
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -62,7 +78,7 @@ export function ProductCreateForm() {
       price: Number(formData.get("price") ?? 0),
       sku: String(formData.get("sku") ?? ""),
       qty: Number(formData.get("qty") ?? 0),
-      imageUrl: imageUrl || undefined,
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
     };
 
     const response = await fetch("/api/products", {
@@ -73,7 +89,7 @@ export function ProductCreateForm() {
       body: JSON.stringify(payload)
     });
 
-    const result = (await response.json().catch(() => null)) as { error?: string } | null;
+    const result = (await response.json().catch(() => null)) as { error?: string; data?: { id?: string } } | null;
 
     if (!response.ok) {
       setState({
@@ -85,9 +101,15 @@ export function ProductCreateForm() {
     }
 
     event.currentTarget.reset();
-    setImageUrl("");
-    setImagePreview(null);
+    setImageUrls([]);
+    setImageUrlText("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (result?.data?.id) {
+      router.push(`/admin/products/${result.data.id}`);
+      return;
+    }
+
     setState({
       isSubmitting: false,
       error: null,
@@ -139,21 +161,28 @@ export function ProductCreateForm() {
         <input min="0" name="qty" placeholder="6" type="number" />
       </label>
       <label>
-        <span>Product Image</span>
+        <span>Gallery Images</span>
+        <textarea
+          name="imageUrls"
+          onChange={(event) => handleImageUrlTextChange(event.target.value)}
+          placeholder={"Paste one image URL per line"}
+          rows={4}
+          value={imageUrlText}
+        />
+      </label>
+      <label>
+        <span>Upload Images</span>
         <input
           accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
           disabled={imageUploading}
+          multiple
           onChange={handleImageChange}
           ref={fileInputRef}
           type="file"
         />
       </label>
       {imageUploading ? <p className="admin-form-message">Uploading image...</p> : null}
-      {imagePreview && !imageUploading ? (
-        <div style={{ marginBottom: "0.5rem" }}>
-          <img alt="Preview" src={imagePreview} style={{ maxHeight: 120, maxWidth: 200, borderRadius: 6, border: "1px solid var(--admin-border)" }} />
-        </div>
-      ) : null}
+      {imageUrls.length > 0 ? <p className="admin-form-message">{imageUrls.length} image(s) attached.</p> : null}
 
       {state.success ? <p className="admin-form-message success">{state.success}</p> : null}
       {state.error ? <p className="admin-form-message error">{state.error}</p> : null}

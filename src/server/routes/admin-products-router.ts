@@ -31,6 +31,7 @@ const updateProductSchema = z
     price: z.number().positive().optional(),
     sku: z.string().min(1).optional(),
     imageUrl: z.string().url().optional(),
+    imageUrls: z.array(z.string().url()).optional(),
     qty: z.number().int().min(0).optional(),
     status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
   })
