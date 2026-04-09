@@ -79,7 +79,7 @@ input {
 .archive-brand {
   display: inline-flex;
   align-items: center;
-  max-width: min(220px, 100%);
+  max-width: min(150px, 100%);
 }
 
 .brand-logo {
@@ -89,7 +89,7 @@ input {
 }
 
 .brand-logo-header {
-  width: min(220px, 40vw);
+  width: min(150px, 30vw);
 }
 
 .archive-nav {
@@ -2023,10 +2023,23 @@ input {
   display: grid;
   align-items: center;
   gap: 0.35rem;
+  width: 100%;
   padding: 0.9rem 1rem;
   border: 1px solid rgba(28, 22, 16, 0.1);
   background: rgba(255, 255, 255, 0.52);
   color: #5d5045;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.product-option-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(11, 61, 46, 0.24);
+}
+
+.product-option-card:focus-visible {
+  outline: 2px solid rgba(11, 61, 46, 0.24);
+  outline-offset: 2px;
 }
 
 .product-option-card.is-selected {

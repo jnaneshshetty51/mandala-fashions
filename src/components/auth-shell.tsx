@@ -1,8 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { CartCountBadge } from "@/components/cart/cart-count-badge";
-import { BrandLogo } from "@/components/ui/brand-logo";
 import { siteConfig } from "@/lib/site";
 
 type AuthShellProps = {
@@ -25,7 +25,14 @@ export function AuthShell({ children, navigation, centerBrand = false }: AuthShe
     <main className={`auth-page${centerBrand ? " auth-page-center" : ""}`}>
       <header className="archive-header auth-header">
         <Link className="archive-brand auth-brand" href="/">
-          <BrandLogo className="brand-logo brand-logo-header" priority width={220} />
+          <Image
+            alt="Mandala logo"
+            className="brand-logo brand-logo-header"
+            height={136}
+            priority
+            src="/homepage-assets/mandala.png"
+            width={210}
+          />
         </Link>
         <nav className="archive-nav auth-nav" aria-label="Primary">
           {headerNavigation.map((item) => (

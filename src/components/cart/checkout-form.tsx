@@ -49,7 +49,6 @@ export function CheckoutForm() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
-  const hasUnavailableItems = items.some((item) => !item.productId);
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const discount = couponApplied?.discountAmount ?? 0;
   const total = Math.max(subtotal - discount, 0);
@@ -84,11 +83,6 @@ export function CheckoutForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (hasUnavailableItems) {
-      setError("Your cart contains items that are no longer purchasable. Remove them and try again.");
-      return;
-    }
-
     if (items.length === 0) {
       setError("Your cart is empty.");
       return;
@@ -113,7 +107,10 @@ export function CheckoutForm() {
 
     const orderItems = items.map((item) => ({
       productId: item.productId,
+      slug: item.slug,
       name: item.name,
+      color: item.selectedColor,
+      variantName: item.selectedVariantName,
       quantity: item.quantity,
       unitPrice: item.unitPrice
     }));
@@ -156,10 +153,10 @@ export function CheckoutForm() {
     const orderRes = await fetch("/api/payments/create-razorpay-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: orderItems,
-        shippingAmount,
-        discountAmount: couponApplied?.discountAmount ?? 0
+        body: JSON.stringify({
+          items: orderItems,
+          shippingAmount,
+          discountAmount: couponApplied?.discountAmount ?? 0
       })
     });
 
@@ -302,7 +299,7 @@ export function CheckoutForm() {
       <section className="form-card">
         <h2>Order Review</h2>
         <div className="guide-link-list">
-          <span>{items.length} {items.length === 1 ? "item" : "items"} in cart</span>
+          <span>{items.reduce((sum, item) => sum + item.quantity, 0)} {items.reduce((sum, item) => sum + item.quantity, 0) === 1 ? "item" : "items"} in cart</span>
           <span>Subtotal: ₹{subtotal.toLocaleString("en-IN")}</span>
           {couponApplied ? <span>Discount: -₹{couponApplied.discountAmount.toLocaleString("en-IN")}</span> : null}
           <span>Total: ₹{total.toLocaleString("en-IN")}</span>

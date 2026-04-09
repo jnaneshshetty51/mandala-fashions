@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { CartActionButtons } from "@/components/cart/cart-buttons";
 import { ArchiveShell, ProductCard } from "@/components/archive-shell";
+import { ProductPurchasePanel } from "@/components/cart/product-purchase-panel";
 import { archiveProducts } from "@/lib/archive-data";
 import { listCatalogProducts } from "@/server/catalog/service";
 
@@ -154,38 +154,19 @@ export default async function ProductDetailPage({
           <p className="product-detail-note">{product.note}</p>
           <p className="product-detail-description">{product.description}</p>
 
-          <div className="retail-choice-block">
-            <div className="retail-choice-header">
-              <h2>Color</h2>
-              <span>{product.color}</span>
-            </div>
-            <div className="product-option-grid retail-swatch-grid">
-              {product.colorChoices.map((item) => (
-                <span className={`product-option-card ${item === product.color ? "is-selected" : ""}`} key={item}>
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="retail-choice-block">
-            <div className="retail-choice-header">
-              <h2>Variant</h2>
-              <span>{product.variants[0]?.name}</span>
-            </div>
-            <div className="product-option-grid product-variant-grid">
-              {product.variants.map((variant, index) => (
-                <article
-                  className={`product-option-card product-variant-card ${index === 0 ? "is-selected" : ""}`}
-                  key={variant.name}
-                >
-                  <strong>{variant.name}</strong>
-                  <span>{variant.note}</span>
-                  <em>{variant.price}</em>
-                </article>
-              ))}
-            </div>
-          </div>
+          <ProductPurchasePanel
+            product={{
+              productId: product.source === "database" ? product.id : undefined,
+              slug: product.slug,
+              name: product.name,
+              artClass: product.artClass,
+              label: product.label,
+              color: product.color,
+              colorChoices: product.colorChoices,
+              variants: product.variants,
+              isPurchasable: product.isPurchasable
+            }}
+          />
 
           <div className="product-occasion-row retail-tag-row">
             {product.occasions.map((item) => (
@@ -194,19 +175,6 @@ export default async function ProductDetailPage({
               </span>
             ))}
           </div>
-
-          <CartActionButtons
-            product={{
-              productId: product.source === "database" ? product.id : undefined,
-              slug: product.slug,
-              name: product.name,
-              price: product.price,
-              unitPrice: Number(product.price.replace(/[^\d]/g, "")) || 0,
-              artClass: product.artClass,
-              label: product.label,
-              isPurchasable: product.isPurchasable
-            }}
-          />
 
           <div className="retail-service-strip">
             <div>

@@ -1,5 +1,6 @@
 import { OrderStatus, Prisma } from "@prisma/client";
 
+import { resolvePurchasableCartItems } from "@/server/catalog/purchasing";
 import { prisma } from "@/server/db";
 
 export class OrderServiceError extends Error {
@@ -14,9 +15,12 @@ export class OrderServiceError extends Error {
 
 type OrderLineInput = {
   productId?: string | null;
+  slug?: string | null;
   quantity: number;
   unitPrice: number;
   name: string;
+  color?: string | null;
+  variantName?: string | null;
 };
 
 type CreateOrderInput = {
@@ -141,7 +145,8 @@ export async function createOrder(input: CreateOrderInput) {
     throw new OrderServiceError("Your cart is empty.");
   }
 
-  const missingProductReference = input.items.find((item) => !item.productId);
+  const resolvedItems = await resolvePurchasableCartItems(input.items);
+  const missingProductReference = resolvedItems.find((item) => !item?.product);
 
   if (missingProductReference) {
     throw new OrderServiceError(
@@ -151,8 +156,9 @@ export async function createOrder(input: CreateOrderInput) {
 
   const quantityByProduct = new Map<string, number>();
 
-  input.items.forEach((item) => {
-    const productId = item.productId as string;
+  resolvedItems.forEach((entry) => {
+    const productId = entry!.product.id;
+    const item = entry!.item;
     quantityByProduct.set(productId, (quantityByProduct.get(productId) ?? 0) + item.quantity);
   });
 
@@ -189,9 +195,9 @@ export async function createOrder(input: CreateOrderInput) {
 
   if (input.couponCode) {
     const { validateCoupon } = await import("@/server/coupons/service");
-    const subtotalForCoupon = input.items.reduce((sum, item) => {
-      const product = productMap.get(item.productId as string);
-      return sum + Number(product?.price ?? 0) * item.quantity;
+    const subtotalForCoupon = resolvedItems.reduce((sum, entry) => {
+      const item = entry!.item;
+      return sum + item.unitPrice * item.quantity;
     }, 0);
     const couponResult = await validateCoupon(input.couponCode, subtotalForCoupon);
     if (!couponResult.valid) {
@@ -204,9 +210,9 @@ export async function createOrder(input: CreateOrderInput) {
   const shippingAmount = input.shippingAmount ?? 0;
   const discountAmount = couponDiscount;
 
-  const subtotal = input.items.reduce((sum, item) => {
-    const product = productMap.get(item.productId as string);
-    return sum + Number(product?.price ?? 0) * item.quantity;
+  const subtotal = resolvedItems.reduce((sum, entry) => {
+    const item = entry!.item;
+    return sum + item.unitPrice * item.quantity;
   }, 0);
 
   const totalAmount = Math.max(subtotal + shippingAmount - discountAmount, 0);
@@ -250,12 +256,13 @@ export async function createOrder(input: CreateOrderInput) {
         discountAmount: new Prisma.Decimal(discountAmount),
         totalAmount: new Prisma.Decimal(totalAmount),
         items: {
-          create: input.items.map((item) => {
-            const product = productMap.get(item.productId as string);
-            const unitPrice = Number(product?.price ?? 0);
+          create: resolvedItems.map((entry) => {
+            const item = entry!.item;
+            const product = entry!.product;
+            const unitPrice = item.unitPrice;
 
             return {
-              productId: item.productId as string,
+              productId: product.id,
               quantity: item.quantity,
               unitPrice: new Prisma.Decimal(unitPrice),
               totalPrice: new Prisma.Decimal(unitPrice * item.quantity)

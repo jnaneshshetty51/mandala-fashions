@@ -7,7 +7,6 @@ import { useCart } from "@/components/cart/cart-provider";
 export function CartPageView() {
   const { items, removeItem } = useCart();
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const unavailableItems = items.filter((item) => !item.productId);
 
   return (
     <section className="editorial-section commerce-grid">
@@ -22,17 +21,22 @@ export function CartPageView() {
           </article>
         ) : (
           items.map((item) => (
-            <article className="commerce-item" key={item.slug}>
+            <article className="commerce-item" key={item.cartKey}>
               <div className={`commerce-thumb ${item.artClass}`} />
               <div>
                 <p className="product-label">{item.label}</p>
                 <h2>{item.name}</h2>
-                <p>Saved in your cart and ready for checkout.</p>
+                <p>
+                  Saved in your cart and ready for checkout.
+                  {item.selectedVariantName ? ` ${item.selectedVariantName}` : ""}
+                  {item.selectedColor ? ` in ${item.selectedColor}` : ""}
+                  .
+                </p>
               </div>
               <div className="commerce-meta">
                 <span>{item.price}</span>
                 <span>Qty {item.quantity}</span>
-                <button className="text-link" onClick={() => removeItem(item.slug)} type="button">
+                <button className="text-link" onClick={() => removeItem(item.cartKey)} type="button">
                   Remove
                 </button>
               </div>
@@ -41,12 +45,6 @@ export function CartPageView() {
         )}
 
         <article className="detail-panel cart-coupon-panel">
-          {unavailableItems.length > 0 ? (
-            <p className="auth-message auth-error">
-              {unavailableItems.length} cart item{unavailableItems.length > 1 ? "s are" : " is"} no longer purchasable.
-              Remove unavailable items before checkout.
-            </p>
-          ) : null}
           <h2>Apply coupon</h2>
           <p className="cart-helper-text">Review active boutique offers before checkout and use the matching code during assisted ordering.</p>
           <Link className="secondary-button text-button" href="/offers">
@@ -117,11 +115,11 @@ export function CartPageView() {
           <span>Clear pricing, quick support, and boutique finishing help before checkout.</span>
         </div>
         <Link
-          aria-disabled={items.length === 0 || unavailableItems.length > 0}
+          aria-disabled={items.length === 0}
           className="primary-button text-button"
-          href={items.length === 0 || unavailableItems.length > 0 ? "/cart" : "/checkout"}
+          href={items.length === 0 ? "/cart" : "/checkout"}
         >
-          {items.length === 0 ? "Browse products" : unavailableItems.length > 0 ? "Resolve cart issues" : "Proceed to checkout"}
+          {items.length === 0 ? "Browse products" : "Proceed to checkout"}
         </Link>
       </aside>
     </section>

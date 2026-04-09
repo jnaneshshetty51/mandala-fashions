@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { CartCountBadge } from "@/components/cart/cart-count-badge";
@@ -33,7 +34,14 @@ export function ArchiveShell({ children, activeNav = "shop" }: ArchiveShellProps
     <main className="archive-page">
       <header className="archive-header">
         <Link className="archive-brand" href="/">
-          <BrandLogo className="brand-logo brand-logo-header" priority width={220} />
+          <Image
+            alt="Mandala logo"
+            className="brand-logo brand-logo-header"
+            height={136}
+            priority
+            src="/homepage-assets/mandala.png"
+            width={210}
+          />
         </Link>
         <nav className="archive-nav" aria-label="Primary">
           <Link className={activeNav === "shop" ? "is-active" : undefined} href="/shop">
@@ -65,7 +73,13 @@ export function ArchiveShell({ children, activeNav = "shop" }: ArchiveShellProps
       <footer className="archive-footer" id="footer">
         <div className="footer-column footer-brand">
           <Link className="footer-brand-logo" href="/">
-            <BrandLogo className="brand-logo" width={260} />
+            <Image
+              alt="Mandala footer logo"
+              className="brand-logo"
+              height={162}
+              src="/homepage-assets/mandala.png"
+              width={250}
+            />
           </Link>
           <p>{siteConfig.footerCopy}</p>
           <div className="footer-socials" aria-label="Social links">

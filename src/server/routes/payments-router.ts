@@ -8,10 +8,13 @@ function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => P
 }
 
 const cartItemSchema = z.object({
-  productId: z.string(),
+  productId: z.string().optional(),
+  slug: z.string().optional(),
   name: z.string().min(1),
   quantity: z.coerce.number().int().positive(),
-  unitPrice: z.coerce.number().positive()
+  unitPrice: z.coerce.number().positive(),
+  color: z.string().optional(),
+  variantName: z.string().optional()
 });
 
 const createRazorpayOrderSchema = z.object({
@@ -44,7 +47,7 @@ paymentsRouter.post("/create-razorpay-order", asyncHandler(async (req, res) => {
   }
 
   const result = await createRazorpayOrder(
-    parsed.data.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+    parsed.data.items,
     parsed.data.shippingAmount,
     parsed.data.discountAmount
   );

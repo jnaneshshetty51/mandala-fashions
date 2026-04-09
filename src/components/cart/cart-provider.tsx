@@ -35,7 +35,23 @@ function readStoredCart(): CartItem[] {
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CartItem[]) : [];
+    if (!raw) {
+      return [];
+    }
+
+    return (JSON.parse(raw) as Array<Partial<CartItem> & Pick<CartItem, "slug" | "name" | "price" | "unitPrice" | "artClass" | "label">>).map((item) => ({
+      cartKey: item.cartKey ?? [item.slug, item.selectedVariantName ?? "default", item.selectedColor ?? "default"].join("::"),
+      productId: item.productId,
+      slug: item.slug,
+      name: item.name,
+      price: item.price,
+      unitPrice: item.unitPrice,
+      artClass: item.artClass,
+      label: item.label,
+      selectedColor: item.selectedColor,
+      selectedVariantName: item.selectedVariantName,
+      quantity: item.quantity ?? 1
+    }));
   } catch {
     return [];
   }

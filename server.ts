@@ -85,9 +85,14 @@ const orderSchema = z.object({
   shippingAddress: z.string().min(10),
   shippingAmount: z.coerce.number().min(0).optional(),
   discountAmount: z.coerce.number().min(0).optional(),
+  couponCode: z.string().optional(),
+  paymentMethod: z.string().optional(),
   items: z.array(z.object({
     productId: z.string().optional(),
+    slug: z.string().optional(),
     name: z.string().min(2),
+    color: z.string().optional(),
+    variantName: z.string().optional(),
     quantity: z.coerce.number().int().positive(),
     unitPrice: z.coerce.number().positive()
   })).min(1)
