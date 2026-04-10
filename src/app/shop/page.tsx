@@ -15,8 +15,32 @@ const colorSwatches = [
   { name: "Ivory", className: "swatch-ivory" }
 ];
 
+const quickFilters = [
+  { label: "All", href: "/shop" },
+  { label: "Bridal", href: "/shop?occasion=Wedding&fabric=Silk" },
+  { label: "Festive", href: "/shop?occasion=Festive" },
+  { label: "Office Wear", href: "/shop?occasion=Office&fabric=Cotton" },
+  { label: "Party", href: "/shop?occasion=Party&fabric=Georgette" },
+  { label: "Pastels", href: "/shop?color=Ivory&occasion=Festive" }
+];
+
+const colorKeywords: Record<string, string[]> = {
+  "deep green": ["green", "emerald", "jade", "forest", "teal", "olive"],
+  "crimson": ["red", "crimson", "maroon", "ruby", "rose", "pink", "magenta"],
+  "espresso": ["brown", "espresso", "chocolate", "coffee", "earth", "tan", "beige"],
+  "saffron": ["yellow", "saffron", "gold", "amber", "mustard", "turmeric", "orange"],
+  "ivory": ["ivory", "white", "cream", "off-white", "beige", "pearl", "silver", "grey", "gray"]
+};
+
 function normalize(value: string) {
   return value.toLowerCase().trim();
+}
+
+function matchesColor(productColor: string, activeColor: string): boolean {
+  const normalizedProduct = normalize(productColor);
+  const normalizedActive = normalize(activeColor);
+  const keywords = colorKeywords[normalizedActive] ?? [normalizedActive];
+  return keywords.some((keyword) => normalizedProduct.includes(keyword)) || normalizedProduct.includes(normalizedActive);
 }
 
 function makeShopHref({
@@ -53,46 +77,44 @@ export default async function ShopPage({
   const activeOccasion = occasion.trim();
   const activeColor = color.trim();
 
+  const hasActiveFilter = Boolean(activeFabric || activeOccasion || activeColor);
+
   const filteredProducts = products.filter((product) => {
     const matchesFabric = !activeFabric || normalize(product.fabric).includes(normalize(activeFabric));
     const matchesOccasion =
       !activeOccasion ||
-      normalize(product.occasion).includes(normalize(activeOccasion)) ||
-      product.occasions.some((item) => normalize(item).includes(normalize(activeOccasion)));
-    const matchesColor = !activeColor || normalize(product.color).includes(normalize(activeColor));
+      normalize(product.occasion).includes(normalize(activeOccasion));
+    const matchesColorFilter = !activeColor || matchesColor(product.color, activeColor);
 
-    return matchesFabric && matchesOccasion && matchesColor;
+    return matchesFabric && matchesOccasion && matchesColorFilter;
   });
+
+  const displayProducts = hasActiveFilter ? filteredProducts : products;
 
   return (
     <ArchiveShell activeNav="shop">
       <PageHero
         eyebrow="Mandala Fashions"
-        title="Traditional Weaves"
-        crumb="Sarees"
-        intro="Browse the full catalog by fabric, occasion, and color with working filters designed for everyday shopping."
+        title="The Full Collection"
+        crumb="Shop"
+        intro="Browse every saree by fabric, occasion, and color — with filters that work."
       />
 
-      <section className="retail-toolbar">
-        <div className="retail-toolbar-copy">
-          <strong>Retail-style shopping</strong>
-          <span>Pick sarees by occasion, budget, fabric, and color without digging through the full catalog.</span>
-        </div>
-        <div className="retail-toolbar-chips">
-          <span>Best Seller</span>
-          <span>New Arrivals</span>
-          <span>Wedding Edit</span>
-          <span>Workwear</span>
-        </div>
-      </section>
-
-      <section className="search-chip-strip">
-        <Link href="/shop?occasion=Wedding&fabric=Silk">Bridal Sarees</Link>
-        <Link href="/shop?occasion=Office&fabric=Cotton">Office Wear</Link>
-        <Link href="/shop?occasion=Festive">Light Festive</Link>
-        <Link href="/shop?occasion=Party&fabric=Georgette">Party Wear</Link>
-        <Link href="/shop?color=Ivory&occasion=Festive">Pastel Picks</Link>
-      </section>
+      <nav className="shop-quick-filters" aria-label="Quick filters">
+        {quickFilters.map((filter) => {
+          const isAll = filter.href === "/shop";
+          const isActive = isAll ? !hasActiveFilter : false;
+          return (
+            <Link
+              className={`shop-quick-chip${isActive ? " is-active" : ""}`}
+              href={filter.href}
+              key={filter.label}
+            >
+              {filter.label}
+            </Link>
+          );
+        })}
+      </nav>
 
       <section className="archive-layout">
         <aside className="filter-rail" aria-label="Filters">
@@ -154,7 +176,7 @@ export default async function ShopPage({
             </div>
           </div>
 
-          {activeFabric || activeOccasion || activeColor ? (
+          {hasActiveFilter ? (
             <Link className="text-link" href="/shop">
               Clear filters
             </Link>
@@ -162,37 +184,53 @@ export default async function ShopPage({
         </aside>
 
         <div className="products-panel">
-          <div className="section-heading-row retail-section-heading">
+          <div className="shop-results-bar">
             <div>
-              <p className="eyebrow">Shop catalog</p>
-              <h2>{filteredProducts.length} available pieces</h2>
+              <p className="eyebrow">
+                {hasActiveFilter
+                  ? `${filteredProducts.length} result${filteredProducts.length !== 1 ? "s" : ""} found`
+                  : `${products.length} piece${products.length !== 1 ? "s" : ""} in catalog`}
+              </p>
+              {hasActiveFilter && (
+                <div className="active-filters-row">
+                  {activeFabric && <span className="active-filter-tag">{activeFabric}</span>}
+                  {activeOccasion && <span className="active-filter-tag">{activeOccasion}</span>}
+                  {activeColor && <span className="active-filter-tag">{activeColor}</span>}
+                  <Link className="clear-filters-link" href="/shop">Clear all</Link>
+                </div>
+              )}
             </div>
-            <div className="retail-results-meta">
-              <span>Retail Grid</span>
-              <span>Top picks first</span>
-              {(activeFabric || activeOccasion || activeColor) && <span>Filtered for your need</span>}
-            </div>
-          </div>
-          <div className="products-grid">
-            {(filteredProducts.length > 0 ? filteredProducts : products).map((product) => (
-              <ProductCard
-                artClass={product.artClass}
-                href={`/products/${product.slug}`}
-                imageUrl={product.imageUrl}
-                key={product.slug}
-                label={product.label}
-                name={product.name}
-                price={product.price}
-              />
-            ))}
           </div>
 
+          {displayProducts.length > 0 ? (
+            <div className="products-grid">
+              {displayProducts.map((product) => (
+                <ProductCard
+                  artClass={product.artClass}
+                  href={`/products/${product.slug}`}
+                  imageUrl={product.imageUrl}
+                  key={product.slug}
+                  label={product.label}
+                  name={product.name}
+                  price={product.price}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="shop-empty-state">
+              <p>No sarees found matching your filters.</p>
+              <Link className="secondary-button" href="/shop">Browse all sarees</Link>
+            </div>
+          )}
+
           <div className="load-more">
-            <p>
-              {filteredProducts.length > 0
-                ? `Showing ${filteredProducts.length} filtered results`
-                : `Showing ${products.length} catalog pieces`}
-            </p>
+            {hasActiveFilter && filteredProducts.length === 0 ? null : (
+              <p>
+                {hasActiveFilter
+                  ? `${filteredProducts.length} filtered results`
+                  : `${products.length} pieces in the collection`}
+              </p>
+            )}
             <Link className="secondary-button text-button" href="/search">
               Search Mandala Fashions
             </Link>

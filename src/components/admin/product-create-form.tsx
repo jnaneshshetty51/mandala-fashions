@@ -121,7 +121,7 @@ export function ProductCreateForm() {
         sku: String(formData.get("sku") ?? ""),
         qty: Number(formData.get("qty") ?? 0),
         imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
-        status: String(formData.get("status") ?? "DRAFT"),
+        status: String(formData.get("status") ?? "ACTIVE"),
         vendor: String(formData.get("vendor") ?? "") || undefined,
         tags: parseTags(String(formData.get("tags") ?? "")),
         seoTitle: String(formData.get("seoTitle") ?? "") || undefined,
@@ -240,7 +240,7 @@ export function ProductCreateForm() {
           </label>
           <label>
             <span>Status</span>
-            <select defaultValue="DRAFT" name="status">
+            <select defaultValue="ACTIVE" name="status">
               <option value="DRAFT">Draft</option>
               <option value="ACTIVE">Active</option>
               <option value="ARCHIVED">Archived</option>
