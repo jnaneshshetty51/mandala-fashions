@@ -101,8 +101,15 @@ const shoppingNeeds = [
 
 export default async function HomePage() {
   const products = await listCatalogProducts();
-  const bestSellers = products.slice(0, 4);
-  const newArrivals = [...products].reverse().slice(0, 4);
+
+  // New arrivals = most recently added (DB returns newest first)
+  const newArrivals = products.slice(0, 8);
+  // Best sellers = next batch (different products, no overlap)
+  const bestSellers = products.slice(8, 16);
+  // Remaining catalog = everything not shown above
+  const remainingCatalog = products.slice(16);
+  // If catalog is small (< 16 products), show all products in the catalog grid to guarantee visibility
+  const allForCatalogGrid = products.length <= 16 ? products : remainingCatalog;
 
   return (
     <ArchiveShell activeNav="shop">
@@ -266,29 +273,25 @@ export default async function HomePage() {
       <section className="fashion-section">
         <div className="section-heading-row">
           <div>
-            <p className="eyebrow">Best sellers</p>
-            <h2>Most loved right now</h2>
+            <p className="eyebrow">Fresh finds</p>
+            <h2>New arrivals</h2>
           </div>
           <Link className="text-link" href="/shop">
             View all
           </Link>
         </div>
         <div className="products-grid compact-grid">
-          {bestSellers.map((product) => (
+          {newArrivals.map((product) => (
             <div className="home-product-stack" key={product.slug}>
               <ProductCard
                 artClass={product.artClass}
                 href={`/products/${product.slug}`}
                 imageUrl={product.imageUrl}
-                label="Best Seller"
+                label="Just In"
                 name={product.name}
                 price={product.price}
               />
-              <p className="fashion-discount-line">40-60% off</p>
-              <div className="home-product-meta">
-                <span>Trending</span>
-                <span>Fast moving</span>
-              </div>
+              <p className="fashion-discount-line">New season pick</p>
             </div>
           ))}
         </div>
@@ -312,29 +315,73 @@ export default async function HomePage() {
         ))}
       </section>
 
-      <section className="fashion-section">
-        <div className="section-heading-row">
-          <div>
-            <p className="eyebrow">Fresh finds</p>
-            <h2>New arrivals</h2>
-          </div>
-        </div>
-        <div className="products-grid compact-grid">
-          {newArrivals.map((product) => (
-            <div className="home-product-stack" key={product.slug}>
-              <ProductCard
-                artClass={product.artClass}
-                href={`/products/${product.slug}`}
-                imageUrl={product.imageUrl}
-                label="Just In"
-                name={product.name}
-                price={product.price}
-              />
-              <p className="fashion-discount-line">New season pick</p>
+      {bestSellers.length > 0 ? (
+        <section className="fashion-section">
+          <div className="section-heading-row">
+            <div>
+              <p className="eyebrow">Best sellers</p>
+              <h2>Most loved right now</h2>
             </div>
-          ))}
-        </div>
-      </section>
+            <Link className="text-link" href="/shop">
+              View all
+            </Link>
+          </div>
+          <div className="products-grid compact-grid">
+            {bestSellers.map((product) => (
+              <div className="home-product-stack" key={product.slug}>
+                <ProductCard
+                  artClass={product.artClass}
+                  href={`/products/${product.slug}`}
+                  imageUrl={product.imageUrl}
+                  label="Best Seller"
+                  name={product.name}
+                  price={product.price}
+                />
+                <p className="fashion-discount-line">40-60% off</p>
+                <div className="home-product-meta">
+                  <span>Trending</span>
+                  <span>Fast moving</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {allForCatalogGrid.length > 0 ? (
+        <section className="fashion-section">
+          <div className="section-heading-row">
+            <div>
+              <p className="eyebrow">Complete collection</p>
+              <h2>Explore the full catalog</h2>
+            </div>
+            <Link className="text-link" href="/shop">
+              Shop all
+            </Link>
+          </div>
+          <div className="products-grid compact-grid">
+            {allForCatalogGrid.map((product) => (
+              <div className="home-product-stack" key={product.slug}>
+                <ProductCard
+                  artClass={product.artClass}
+                  href={`/products/${product.slug}`}
+                  imageUrl={product.imageUrl}
+                  label={product.label}
+                  name={product.name}
+                  price={product.price}
+                />
+              </div>
+            ))}
+          </div>
+          {products.length > 16 ? (
+            <div style={{ textAlign: "center", marginTop: "2rem" }}>
+              <Link className="secondary-button text-button" href="/shop">
+                View all {products.length} products
+              </Link>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="fashion-section fashion-service-grid">
         <article className="fashion-service-card">
