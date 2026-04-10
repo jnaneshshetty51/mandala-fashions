@@ -27,7 +27,13 @@ import { assertProductionEnv, getServerEnv, getStartupWarnings } from "@/server/
 import { consumeRateLimit } from "@/server/http/rate-limit";
 import { createOrder, OrderServiceError, trackOrder } from "@/server/orders/service";
 import { createProduct, listProducts } from "@/server/products/service";
-import { getRazorpaySettings, updateRazorpaySettings } from "@/server/settings/service";
+import {
+  getRazorpaySettings,
+  updateRazorpaySettings,
+  getResendSettings,
+  updateResendSettings,
+  testResendApiKey
+} from "@/server/settings/service";
 import {
   getShiprocketSettings,
   updateShiprocketSettings,
@@ -465,6 +471,61 @@ async function bootstrap() {
     }
 
     const ok = await testShiprocketCredentials(email, password);
+    return res.json({ data: { success: ok } });
+  }));
+
+  // Resend settings
+  server.get("/api/admin/settings/resend", asyncHandler(async (req, res) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const settings = await getResendSettings();
+    return res.json({
+      data: {
+        fromEmail: settings.fromEmail,
+        fromName: settings.fromName,
+        apiKeyMasked: settings.apiKeyMasked,
+        isConfigured: settings.isConfigured
+      }
+    });
+  }));
+
+  const resendSettingsSchema = z.object({
+    apiKey: z.string().min(1),
+    fromEmail: z.string().email(),
+    fromName: z.string().min(1)
+  });
+
+  server.put("/api/admin/settings/resend", asyncHandler(async (req, res) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const parsed = resendSettingsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid Resend settings.", details: parsed.error.flatten() });
+    }
+
+    const settings = await updateResendSettings(parsed.data);
+    return res.json({
+      data: {
+        fromEmail: settings.fromEmail,
+        fromName: settings.fromName,
+        apiKeyMasked: settings.apiKeyMasked,
+        isConfigured: settings.isConfigured
+      }
+    });
+  }));
+
+  server.post("/api/admin/settings/resend/test", asyncHandler(async (req, res) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const { apiKey } = req.body as { apiKey?: string };
+    if (!apiKey) {
+      return res.status(400).json({ error: "API key is required." });
+    }
+
+    const ok = await testResendApiKey(apiKey);
     return res.json({ data: { success: ok } });
   }));
 
