@@ -106,8 +106,8 @@ export default async function AdminPage() {
       </section>
 
       {/* Catalog Health */}
-      <section className="admin-workbench" style={{ marginBottom: "1.5rem" }}>
-        <article className="admin-table-card" style={{ flex: 1 }}>
+      <section className="admin-catalog-health-section">
+        <article className="admin-table-card">
           <div className="admin-card-header">
             <div>
               <h2>Catalog Health</h2>
@@ -115,7 +115,7 @@ export default async function AdminPage() {
             </div>
             <Link href="/admin/products">Manage Catalog</Link>
           </div>
-          <div className="admin-metric-grid" style={{ padding: "1rem 1.5rem", gap: "0.75rem" }}>
+          <div className="admin-catalog-health-grid">
             <article className="admin-metric-card">
               <p>Total Products</p>
               <h2>{catalogSummary.total}</h2>

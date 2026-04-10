@@ -3077,6 +3077,11 @@ input {
   grid-template-columns: 260px minmax(0, 1fr);
   background: #f4f6f8;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: grid-template-columns 180ms ease;
+}
+
+.admin-shell.is-sidebar-collapsed {
+  grid-template-columns: 88px minmax(0, 1fr);
 }
 
 .admin-sidebar {
@@ -3097,12 +3102,51 @@ input {
 .admin-brand {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0 0.75rem;
 }
 
 .admin-brand a {
   display: inline-flex;
   width: min(170px, 100%);
+  overflow: hidden;
+}
+
+.admin-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #d9e0e7;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.admin-sidebar-label {
+  white-space: nowrap;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.admin-create-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.admin-create-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .admin-heading-row h1,
@@ -3135,6 +3179,7 @@ input {
 .admin-sidebar-footer a {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   min-height: 2.75rem;
   padding: 0.7rem 0.85rem;
   border-radius: 10px;
@@ -3150,10 +3195,28 @@ input {
 
 .admin-create-button,
 .admin-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 3rem;
+  padding: 0 1rem;
   border-radius: 10px;
   background: #111827;
   color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.admin-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #374151;
   font-size: 0.92rem;
   font-weight: 600;
 }
@@ -3162,6 +3225,34 @@ input {
   align-self: end;
   display: grid;
   gap: 0.3rem;
+}
+
+.admin-shell.is-sidebar-collapsed .admin-sidebar-inner {
+  padding-inline: 0.75rem;
+}
+
+.admin-shell.is-sidebar-collapsed .admin-brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.admin-shell.is-sidebar-collapsed .admin-brand a,
+.admin-shell.is-sidebar-collapsed .admin-sidebar-label {
+  opacity: 0;
+  width: 0;
+  transform: translateX(-0.25rem);
+  pointer-events: none;
+}
+
+.admin-shell.is-sidebar-collapsed .admin-nav a,
+.admin-shell.is-sidebar-collapsed .admin-sidebar-footer a,
+.admin-shell.is-sidebar-collapsed .admin-create-button {
+  justify-content: center;
+  padding-inline: 0.5rem;
+}
+
+.admin-shell.is-sidebar-collapsed .admin-sidebar-footer {
+  justify-items: center;
 }
 
 .admin-main {
@@ -3434,6 +3525,17 @@ input {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
   gap: 1rem;
+}
+
+.admin-catalog-health-section {
+  margin-bottom: 1.5rem;
+}
+
+.admin-catalog-health-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
 }
 
 .admin-metric-card,
@@ -3742,7 +3844,7 @@ input {
 .admin-bar-chart .bar-4 { height: 86%; background: var(--deep-green); }
 .admin-bar-chart .bar-5 { height: 54%; }
 
-.admin-table-card .admin-card-header a {
+.admin-table-card .admin-card-header a:not(.admin-primary-button):not(.admin-secondary-button):not(.admin-ghost-button):not(.admin-orders-filter) {
   color: #2563eb;
   font-size: 0.78rem;
 }
@@ -3767,6 +3869,35 @@ input {
 .admin-table-head-orders,
 .admin-table-row-orders {
   grid-template-columns: 0.9fr 1fr 1.2fr 0.9fr 0.6fr 0.9fr 0.9fr;
+}
+
+.admin-orders-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.admin-orders-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border: 1px solid #dbe2ea;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.admin-orders-filter.is-active {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
 }
 
 .admin-table-head-customers,
@@ -4047,8 +4178,21 @@ input {
 
 .admin-products-actions {
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.admin-products-actions .admin-primary-button,
+.admin-products-actions .admin-ghost-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: max-content;
+  padding: 0 1.5rem;
+  white-space: nowrap;
 }
 
 .admin-products-stats {
@@ -4276,6 +4420,10 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .admin-shell.is-sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
   .admin-sidebar-inner {
     position: static;
     min-height: auto;
@@ -4287,6 +4435,7 @@ input {
 
   .admin-metric-grid,
   .admin-workbench,
+  .admin-catalog-health-grid,
   .admin-chart-row,
   .admin-lower-grid,
   .admin-products-stats,
@@ -4337,6 +4486,10 @@ input {
   .admin-sidebar-inner {
     padding: 0;
     min-height: auto;
+  }
+
+  .admin-sidebar-toggle {
+    display: none;
   }
 
   .admin-products-toolbar {

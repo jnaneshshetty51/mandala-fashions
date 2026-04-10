@@ -92,16 +92,13 @@ export default async function AdminOrdersPage({
                 : "No orders match the current filter."}
             </p>
           </div>
-          <nav
-            aria-label="Filter by status"
-            style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
-          >
+          <nav aria-label="Filter by status" className="admin-orders-filters">
             {STATUS_FILTERS.map(({ label, value }) => {
               const href = value ? `/admin/orders?status=${value}` : "/admin/orders";
               const isActive = activeStatus === value || (!activeStatus && !value);
               return (
                 <Link
-                  className={isActive ? "admin-primary-button" : "admin-secondary-button"}
+                  className={isActive ? "admin-orders-filter is-active" : "admin-orders-filter"}
                   href={href}
                   key={label}
                 >
