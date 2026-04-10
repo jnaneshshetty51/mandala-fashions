@@ -134,6 +134,9 @@ model Order {
   paymentMethod     String?
   razorpayOrderId   String?
   razorpayPaymentId String?
+  shiprocketOrderId String?
+  shiprocketAwb     String?
+  shiprocketStatus  String?
   placedAt          DateTime     @default(now())
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

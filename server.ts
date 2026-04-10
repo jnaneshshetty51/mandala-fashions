@@ -28,6 +28,11 @@ import { consumeRateLimit } from "@/server/http/rate-limit";
 import { createOrder, OrderServiceError, trackOrder } from "@/server/orders/service";
 import { createProduct, listProducts } from "@/server/products/service";
 import { getRazorpaySettings, updateRazorpaySettings } from "@/server/settings/service";
+import {
+  getShiprocketSettings,
+  updateShiprocketSettings,
+  testShiprocketCredentials
+} from "@/server/shiprocket/service";
 import { storageBucket, minioClient } from "@/server/storage/config";
 import { ensureBucket, uploadFileToStorage } from "@/server/storage/service";
 import { adminOrdersRouter } from "@/server/routes/admin-orders-router";
@@ -396,6 +401,71 @@ async function bootstrap() {
         hasStoredSecret: settings.hasStoredSecret
       }
     });
+  }));
+
+  // Shiprocket settings
+  server.get("/api/admin/settings/shiprocket", asyncHandler(async (req, res) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const settings = await getShiprocketSettings();
+    return res.json({
+      data: {
+        email: settings.email,
+        pickupLocation: settings.pickupLocation,
+        channelId: settings.channelId,
+        defaultCity: settings.defaultCity,
+        defaultState: settings.defaultState,
+        defaultPincode: settings.defaultPincode,
+        isConfigured: settings.isConfigured
+      }
+    });
+  }));
+
+  const shiprocketSettingsSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(1),
+    pickupLocation: z.string().min(1),
+    channelId: z.string().optional(),
+    defaultCity: z.string().optional(),
+    defaultState: z.string().optional(),
+    defaultPincode: z.string().optional()
+  });
+
+  server.put("/api/admin/settings/shiprocket", asyncHandler(async (req, res) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const parsed = shiprocketSettingsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid Shiprocket settings.", details: parsed.error.flatten() });
+    }
+
+    const settings = await updateShiprocketSettings(parsed.data);
+    return res.json({
+      data: {
+        email: settings.email,
+        pickupLocation: settings.pickupLocation,
+        channelId: settings.channelId,
+        defaultCity: settings.defaultCity,
+        defaultState: settings.defaultState,
+        defaultPincode: settings.defaultPincode,
+        isConfigured: settings.isConfigured
+      }
+    });
+  }));
+
+  server.post("/api/admin/settings/shiprocket/test", asyncHandler(async (req, res) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const { email, password } = req.body as { email?: string; password?: string };
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required." });
+    }
+
+    const ok = await testShiprocketCredentials(email, password);
+    return res.json({ data: { success: ok } });
   }));
 
   server.get("/api/admin/analytics", asyncHandler(async (req, res) => {

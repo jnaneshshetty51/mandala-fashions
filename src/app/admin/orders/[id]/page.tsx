@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AdminLayout } from "@/components/admin/admin-layout";
+import { ShiprocketShipmentPanel } from "@/components/admin/shiprocket-shipment-panel";
 import { requirePageRole } from "@/server/auth/guards";
 import { prisma } from "@/server/db";
+import { getShiprocketSettings } from "@/server/shiprocket/service";
 
 import { OrderStatusForm } from "./order-status-form";
 
@@ -31,16 +33,17 @@ export default async function AdminOrderDetailPage({
   const user = await requirePageRole(["ADMIN"]);
   const { id } = await params;
 
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      items: {
-        include: {
-          product: true
+  const [order, shiprocketSettings] = await Promise.all([
+    prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: { product: true }
         }
       }
-    }
-  });
+    }),
+    getShiprocketSettings()
+  ]);
 
   if (!order) {
     notFound();
@@ -86,6 +89,13 @@ export default async function AdminOrderDetailPage({
           </h2>
           <span className="admin-delta neutral">Current fulfillment stage</span>
         </article>
+        {order.shiprocketAwb ? (
+          <article className="admin-metric-card">
+            <p>AWB</p>
+            <h2 style={{ fontSize: "1rem" }}>{order.shiprocketAwb}</h2>
+            <span className="admin-delta positive">Shiprocket shipment active</span>
+          </article>
+        ) : null}
       </section>
 
       <div className="admin-settings-layout">
@@ -117,6 +127,12 @@ export default async function AdminOrderDetailPage({
                 <p style={{ whiteSpace: "pre-line" }}>{order.shippingAddress}</p>
               </div>
             )}
+            {order.paymentMethod && (
+              <div>
+                <strong>Payment</strong>
+                <p style={{ textTransform: "uppercase" }}>{order.paymentMethod}</p>
+              </div>
+            )}
           </div>
         </article>
 
@@ -131,7 +147,34 @@ export default async function AdminOrderDetailPage({
         </article>
       </div>
 
-      <article className="admin-table-card">
+      {/* Shiprocket shipping */}
+      <article className="admin-table-card" style={{ marginTop: "1.5rem" }}>
+        <div className="admin-card-header">
+          <div>
+            <h2>Shiprocket Shipping</h2>
+            <p>
+              {order.shiprocketOrderId
+                ? `Shipment #${order.shiprocketOrderId} — AWB: ${order.shiprocketAwb ?? "Pending"}`
+                : "Push this order to Shiprocket to generate a shipping label and AWB."}
+            </p>
+          </div>
+          {order.shiprocketOrderId ? (
+            <span className="admin-delta positive" style={{ fontSize: "0.8rem" }}>Shipment created</span>
+          ) : (
+            <span className="admin-delta neutral" style={{ fontSize: "0.8rem" }}>Not shipped</span>
+          )}
+        </div>
+        <ShiprocketShipmentPanel
+          isShiprocketConfigured={shiprocketSettings.isConfigured}
+          orderId={order.id}
+          orderNumber={order.orderNumber}
+          shiprocketAwb={order.shiprocketAwb}
+          shiprocketOrderId={order.shiprocketOrderId}
+          shiprocketStatus={order.shiprocketStatus}
+        />
+      </article>
+
+      <article className="admin-table-card" style={{ marginTop: "1.5rem" }}>
         <div className="admin-card-header">
           <div>
             <h2>Order Items</h2>
