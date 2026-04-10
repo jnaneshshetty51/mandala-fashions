@@ -33,10 +33,7 @@ const sidebarGroups: Array<{
   },
   {
     heading: "Storefront",
-    items: [
-      { key: "content", label: "Content", href: "/admin/content", icon: "content" },
-      { key: "settings", label: "Settings", href: "/admin/settings", icon: "settings" }
-    ]
+    items: [{ key: "content", label: "Content", href: "/admin/content", icon: "content" }]
   }
 ];
 
@@ -49,7 +46,8 @@ export function AdminLayout({
   eyebrow,
   topNav,
   children,
-  createLabel = "Create New Listing"
+  createLabel = "Create New Listing",
+  createHref
 }: {
   active: AdminNavKey;
   user: { name: string; role: string };
@@ -58,6 +56,7 @@ export function AdminLayout({
   topNav?: Array<{ label: string; href: string }>;
   children: ReactNode;
   createLabel?: string;
+  createHref?: string;
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -81,6 +80,9 @@ export function AdminLayout({
       <aside className="admin-sidebar">
         <div className="admin-sidebar-inner">
           <div className="admin-brand">
+            <span className="admin-brand-mark" aria-hidden="true">
+              MF
+            </span>
             <Link className="admin-brand-link" href="/">
               <BrandLogo className="brand-logo admin-brand-logo" width={136} />
             </Link>
@@ -96,16 +98,18 @@ export function AdminLayout({
             </button>
           </div>
 
-          <button
-            aria-label={isSidebarCollapsed ? createLabel : undefined}
-            className="admin-create-button"
-            type="button"
-          >
-            <span className="admin-create-button-icon" aria-hidden="true">
-              +
-            </span>
-            <span className="admin-sidebar-label">{createLabel}</span>
-          </button>
+          {createHref ? (
+            <Link
+              aria-label={isSidebarCollapsed ? createLabel : undefined}
+              className="admin-create-button"
+              href={createHref}
+            >
+              <span className="admin-create-button-icon" aria-hidden="true">
+                +
+              </span>
+              <span className="admin-sidebar-label">{createLabel}</span>
+            </Link>
+          ) : null}
 
           <div className="admin-nav-groups">
             {sidebarGroups.map((group) => (
@@ -129,7 +133,11 @@ export function AdminLayout({
           </div>
 
           <div className="admin-sidebar-footer">
-            <Link aria-label={isSidebarCollapsed ? "Store settings" : undefined} href="/admin/settings">
+            <Link
+              aria-label={isSidebarCollapsed ? "Store settings" : undefined}
+              className={active === "settings" ? "is-active" : undefined}
+              href="/admin/settings"
+            >
               <span className="admin-nav-icon admin-nav-icon-settings" aria-hidden="true" />
               <span className="admin-sidebar-label">Store settings</span>
             </Link>

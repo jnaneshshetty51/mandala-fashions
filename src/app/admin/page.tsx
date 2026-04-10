@@ -30,6 +30,7 @@ export default async function AdminPage() {
     <AdminLayout
       active="analytics"
       createLabel="Create Product"
+      createHref="/admin/products#create-product"
       eyebrow="Admin Workspace"
       title="Dashboard Overview"
       topNav={[

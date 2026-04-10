@@ -86,6 +86,7 @@ export default async function AdminProductsPage({
     <AdminLayout
       active="products"
       createLabel="Create Product"
+      createHref="/admin/products#create-product"
       eyebrow="Catalog Management"
       title="Products & Variants"
       topNav={[

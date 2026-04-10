@@ -150,19 +150,6 @@ function toArchiveCatalogProduct(product: ArchiveProduct, index: number): Catalo
 }
 
 const archiveCatalog = archiveProducts.map(toArchiveCatalogProduct);
-const DATABASE_RETRY_WINDOW_MS = 60_000;
-const preferArchiveCatalog =
-  process.env.NODE_ENV !== "production" && process.env.CATALOG_SOURCE !== "database";
-
-let databaseRetryAt = 0;
-
-function shouldSkipDatabaseReads() {
-  return Date.now() < databaseRetryAt;
-}
-
-function markDatabaseFailure() {
-  databaseRetryAt = Date.now() + DATABASE_RETRY_WINDOW_MS;
-}
 
 async function loadDatabaseCatalogProducts() {
   const products = await prisma.product.findMany({
@@ -202,14 +189,10 @@ async function loadDatabaseCatalogProducts() {
 }
 
 export const listCatalogProducts = cache(async (): Promise<CatalogProduct[]> => {
-  if (preferArchiveCatalog || shouldSkipDatabaseReads()) {
-    return archiveCatalog;
-  }
-
   try {
     return await loadDatabaseCatalogProducts();
-  } catch {
-    markDatabaseFailure();
+  } catch (error) {
+    console.error("[catalog] DB read failed, falling back to archive:", error);
     return archiveCatalog;
   }
 });

@@ -12,6 +12,7 @@ export default async function AdminContentPage() {
     <AdminLayout
       active="content"
       createLabel="Create Banner"
+      createHref="/admin/content#create-banner"
       eyebrow="Content Studio"
       title="Banners & Merchandising"
       topNav={[
@@ -23,7 +24,7 @@ export default async function AdminContentPage() {
     >
       <div className="admin-settings-layout">
         {/* Left: Create form */}
-        <article className="admin-table-card">
+        <article className="admin-table-card" id="create-banner">
           <div className="admin-card-header">
             <div>
               <h2>Create Banner</h2>

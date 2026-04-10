@@ -18,6 +18,7 @@ export default async function AdminSettingsPage() {
     <AdminLayout
       active="settings"
       createLabel="Save Config"
+      createHref="/admin/settings#razorpay"
       eyebrow="Configuration"
       title="Integrations & Settings"
       topNav={[

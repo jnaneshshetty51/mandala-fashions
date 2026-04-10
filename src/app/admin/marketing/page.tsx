@@ -11,6 +11,7 @@ export default async function AdminMarketingPage() {
     <AdminLayout
       active="marketing"
       createLabel="Create Coupon"
+      createHref="/admin/marketing#create-coupon"
       eyebrow="Marketing Engine"
       title="Coupons & Offers"
       topNav={[
@@ -20,7 +21,7 @@ export default async function AdminMarketingPage() {
       ]}
       user={user}
     >
-      <article className="admin-table-card">
+      <article className="admin-table-card" id="create-coupon">
         <div className="admin-card-header">
           <div>
             <h2>Create Coupon</h2>

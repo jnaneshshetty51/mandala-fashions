@@ -3326,6 +3326,21 @@ input {
   padding: 0 0.55rem;
 }
 
+.admin-brand-mark {
+  width: 2rem;
+  height: 2rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #1f2220;
+  color: #fbfbf8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
 .admin-brand a {
   display: inline-flex;
   width: min(140px, 100%);
@@ -3435,6 +3450,12 @@ input {
 }
 
 .admin-nav .is-active {
+  background: #fbfbf9;
+  box-shadow: inset 0 0 0 1px #dcded8;
+  color: #151914;
+}
+
+.admin-sidebar-footer .is-active {
   background: #fbfbf9;
   box-shadow: inset 0 0 0 1px #dcded8;
   color: #151914;
@@ -3618,6 +3639,10 @@ input {
   padding-inline: 0;
 }
 
+.admin-shell.is-sidebar-collapsed .admin-brand-mark {
+  display: inline-flex;
+}
+
 .admin-shell.is-sidebar-collapsed .admin-brand a,
 .admin-shell.is-sidebar-collapsed .admin-sidebar-label {
   opacity: 0;
@@ -3626,11 +3651,19 @@ input {
   pointer-events: none;
 }
 
+.admin-shell.is-sidebar-collapsed .admin-nav-heading {
+  padding-inline: 0;
+}
+
 .admin-shell.is-sidebar-collapsed .admin-nav a,
 .admin-shell.is-sidebar-collapsed .admin-sidebar-footer a,
 .admin-shell.is-sidebar-collapsed .admin-create-button {
   justify-content: center;
   padding-inline: 0.5rem;
+}
+
+.admin-shell.is-sidebar-collapsed .admin-nav-groups {
+  gap: 0.7rem;
 }
 
 .admin-shell.is-sidebar-collapsed .admin-sidebar-footer {
