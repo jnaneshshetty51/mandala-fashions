@@ -153,9 +153,6 @@ const archiveCatalog = archiveProducts.map(toArchiveCatalogProduct);
 
 async function loadDatabaseCatalogProducts() {
   const products = await prisma.product.findMany({
-    where: {
-      status: "ACTIVE"
-    },
     orderBy: {
       createdAt: "desc"
     }
