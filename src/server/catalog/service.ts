@@ -2,6 +2,7 @@ import { cache } from "react";
 
 import { archiveProducts, type ArchiveProduct } from "@/lib/archive-data";
 import { prisma } from "@/server/db";
+import { splitProductContent } from "@/server/products/content";
 import { normalizeStorageUrl } from "@/server/storage/service";
 
 export type CatalogProduct = ArchiveProduct & {
@@ -9,6 +10,11 @@ export type CatalogProduct = ArchiveProduct & {
   source: "archive" | "database";
   inventoryCount: number;
   isPurchasable: boolean;
+  vendor?: string;
+  tags: string[];
+  seoTitle?: string;
+  seoDescription?: string;
+  publishAt?: string;
 };
 
 function normalizeLabel(value?: string | null) {
@@ -44,37 +50,6 @@ function inferDescription(description: string) {
   return description.length > 0 ? description : "An archive addition crafted for ceremonial and everyday elegance.";
 }
 
-function splitCatalogContent(content: string) {
-  const sections = content.split(/\n\n+/);
-  let description = "";
-  let length = "";
-  let imageUrls: string[] = [];
-
-  for (const section of sections) {
-    if (section.startsWith("Length: ")) {
-      length = section.replace("Length: ", "").trim();
-      continue;
-    }
-
-    if (section.startsWith("Gallery: ")) {
-      try {
-        imageUrls = (JSON.parse(section.replace("Gallery: ", "").trim()) as string[]).filter(Boolean);
-      } catch {
-        imageUrls = [];
-      }
-      continue;
-    }
-
-    description = description ? `${description}\n\n${section}` : section;
-  }
-
-  return {
-    description: description.trim(),
-    length,
-    imageUrls
-  };
-}
-
 function toCatalogProduct(product: {
   id: string;
   slug: string;
@@ -87,7 +62,7 @@ function toCatalogProduct(product: {
   occasion?: string | null;
   color?: string | null;
 }, index: number): CatalogProduct {
-  const content = splitCatalogContent(product.description);
+  const content = splitProductContent(product.description);
   const price = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -154,7 +129,12 @@ function toCatalogProduct(product: {
     ],
     occasions: [inferOccasion(product.occasion), "Festive", "Celebration"],
     inventoryCount: product.inventoryCount,
-    isPurchasable: product.inventoryCount > 0
+    isPurchasable: product.inventoryCount > 0,
+    vendor: content.metadata.vendor,
+    tags: content.metadata.tags ?? [],
+    seoTitle: content.metadata.seoTitle,
+    seoDescription: content.metadata.seoDescription,
+    publishAt: content.metadata.publishAt
   };
 }
 
@@ -164,7 +144,8 @@ function toArchiveCatalogProduct(product: ArchiveProduct, index: number): Catalo
     source: "archive",
     ...product,
     inventoryCount: 12,
-    isPurchasable: true
+    isPurchasable: true,
+    tags: []
   };
 }
 
@@ -197,16 +178,27 @@ async function loadDatabaseCatalogProducts() {
     return archiveCatalog;
   }
 
-  return products.map((product, index) =>
-    toCatalogProduct(
-      {
-        ...product,
-        price: Number(product.price),
-        inventoryCount: product.inventoryCount
-      },
-      index
-    )
-  );
+  return products
+    .filter((product) => {
+      const publishAt = splitProductContent(product.description).metadata.publishAt;
+
+      if (!publishAt) {
+        return true;
+      }
+
+      const publishDate = new Date(publishAt);
+      return Number.isNaN(publishDate.getTime()) || publishDate.getTime() <= Date.now();
+    })
+    .map((product, index) =>
+      toCatalogProduct(
+        {
+          ...product,
+          price: Number(product.price),
+          inventoryCount: product.inventoryCount
+        },
+        index
+      )
+    );
 }
 
 export const listCatalogProducts = cache(async (): Promise<CatalogProduct[]> => {

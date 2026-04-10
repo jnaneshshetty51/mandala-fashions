@@ -1,4 +1,12 @@
+import { InventoryMovementType } from "@prisma/client";
+
 import { prisma } from "@/server/db";
+import {
+  composeProductContent,
+  normalizeProductMetadata,
+  splitProductContent,
+  type ProductContentMetadata
+} from "@/server/products/content";
 import { normalizeStorageUrl } from "@/server/storage/service";
 
 type UpdateProductInput = {
@@ -15,6 +23,11 @@ type UpdateProductInput = {
   imageUrls?: string[];
   qty?: number;
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+  vendor?: string;
+  tags?: string[];
+  seoTitle?: string;
+  seoDescription?: string;
+  publishAt?: string;
 };
 
 function composeProductName(type: string, variant?: string) {
@@ -28,83 +41,6 @@ function splitProductName(name: string) {
   return {
     type: type.trim(),
     variant: rest.join(" - ").trim()
-  };
-}
-
-function composeProductDescription(description: string, length?: string) {
-  const cleanDescription = description.trim();
-  const cleanLength = length?.trim();
-  return cleanLength ? `${cleanDescription}\n\nLength: ${cleanLength}` : cleanDescription;
-}
-
-function splitProductDescription(description: string) {
-  const match = description.match(/\n\nLength:\s*(.+)$/);
-
-  if (!match) {
-    return {
-      description: description.trim(),
-      length: ""
-    };
-  }
-
-  return {
-    description: description.replace(/\n\nLength:\s*.+$/, "").trim(),
-    length: match[1]?.trim() ?? ""
-  };
-}
-
-function composeProductContent(input: {
-  description: string;
-  length?: string;
-  imageUrls?: string[];
-}) {
-  const cleanDescription = input.description.trim();
-  const cleanLength = input.length?.trim();
-  const cleanImageUrls = (input.imageUrls ?? [])
-    .map((item) => normalizeStorageUrl(item))
-    .filter((item): item is string => Boolean(item));
-  const parts = [cleanDescription];
-
-  if (cleanLength) {
-    parts.push(`Length: ${cleanLength}`);
-  }
-
-  if (cleanImageUrls.length > 0) {
-    parts.push(`Gallery: ${JSON.stringify(cleanImageUrls)}`);
-  }
-
-  return parts.join("\n\n");
-}
-
-function splitProductContent(content: string) {
-  const sections = content.split(/\n\n+/);
-  let description = "";
-  let length = "";
-  let imageUrls: string[] = [];
-
-  for (const section of sections) {
-    if (section.startsWith("Length: ")) {
-      length = section.replace("Length: ", "").trim();
-      continue;
-    }
-
-    if (section.startsWith("Gallery: ")) {
-      try {
-        const parsed = JSON.parse(section.replace("Gallery: ", "").trim()) as string[];
-        imageUrls = parsed.filter(Boolean);
-      } catch {
-        imageUrls = [];
-      }
-      continue;
-    }
-
-    description = description ? `${description}\n\n${section}` : section;
-  }
-
-  return {
-    description: description.trim(),
-    length,
-    imageUrls
   };
 }
 
@@ -129,6 +65,11 @@ export async function getAdminProduct(id: string) {
     length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
+    vendor: contentParts.metadata.vendor ?? "",
+    tags: contentParts.metadata.tags ?? [],
+    seoTitle: contentParts.metadata.seoTitle ?? "",
+    seoDescription: contentParts.metadata.seoDescription ?? "",
+    publishAt: contentParts.metadata.publishAt ?? "",
     imageUrls:
       contentParts.imageUrls.length > 0
         ? contentParts.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
@@ -155,6 +96,13 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   const nextVariant = input.variant ?? existingNameParts.variant;
   const nextDescription = input.description ?? existingContentParts.description;
   const nextLength = input.length ?? existingContentParts.length;
+  const nextMetadata = normalizeProductMetadata({
+    vendor: input.vendor ?? existingContentParts.metadata.vendor,
+    tags: input.tags ?? existingContentParts.metadata.tags,
+    seoTitle: input.seoTitle ?? existingContentParts.metadata.seoTitle,
+    seoDescription: input.seoDescription ?? existingContentParts.metadata.seoDescription,
+    publishAt: input.publishAt ?? existingContentParts.metadata.publishAt
+  });
   const nextImageUrls =
     input.imageUrls !== undefined
       ? input.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
@@ -174,7 +122,8 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
         description: composeProductContent({
           description: nextDescription,
           length: nextLength,
-          imageUrls: nextImageUrls
+          imageUrls: nextImageUrls,
+          metadata: nextMetadata
         })
       }),
       ...(input.price !== undefined && { price: input.price }),
@@ -190,6 +139,17 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     }
   });
 
+  if (input.qty !== undefined && input.qty !== existing.inventoryCount) {
+    await prisma.inventoryMovement.create({
+      data: {
+        productId: id,
+        type: InventoryMovementType.ADJUSTMENT,
+        quantity: input.qty - existing.inventoryCount,
+        note: `Stock updated from product editor. New stock: ${input.qty}.`
+      }
+    });
+  }
+
   const nameParts = splitProductName(product.name);
   const contentParts = splitProductContent(product.description);
 
@@ -203,6 +163,11 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
+    vendor: contentParts.metadata.vendor ?? "",
+    tags: contentParts.metadata.tags ?? [],
+    seoTitle: contentParts.metadata.seoTitle ?? "",
+    seoDescription: contentParts.metadata.seoDescription ?? "",
+    publishAt: contentParts.metadata.publishAt ?? "",
     imageUrls:
       contentParts.imageUrls.length > 0
         ? contentParts.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
@@ -254,6 +219,15 @@ export async function adjustInventory(id: string, delta: number) {
     }
   });
 
+  await prisma.inventoryMovement.create({
+    data: {
+      productId: id,
+      type: InventoryMovementType.ADJUSTMENT,
+      quantity: delta,
+      note: `Manual admin adjustment. New stock: ${nextInventoryCount}.`
+    }
+  });
+
   return { id: product.id, inventoryCount: product.inventoryCount };
 }
 
@@ -271,6 +245,11 @@ type CreateProductInput = {
   imageUrls?: string[];
   qty?: number;
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+  vendor?: string;
+  tags?: string[];
+  seoTitle?: string;
+  seoDescription?: string;
+  publishAt?: string;
 };
 
 export async function listProducts() {
@@ -349,6 +328,17 @@ export async function bulkImportProducts(rows: BulkImportRow[]) {
           inventoryCount: row.Qty,
           status: "ACTIVE"
         }
+      }).then(async (product) => {
+        if (row.Qty > 0) {
+          await prisma.inventoryMovement.create({
+            data: {
+              productId: product.id,
+              type: InventoryMovementType.IN,
+              quantity: row.Qty,
+              note: "Initial stock added during bulk import."
+            }
+          });
+        }
       });
 
       created.push(sku);
@@ -369,7 +359,14 @@ export async function createProduct(input: CreateProductInput) {
   const description = composeProductContent({
     description: input.description,
     length: input.length,
-    imageUrls
+    imageUrls,
+    metadata: {
+      vendor: input.vendor,
+      tags: input.tags,
+      seoTitle: input.seoTitle,
+      seoDescription: input.seoDescription,
+      publishAt: input.publishAt
+    }
   });
 
   const baseSlug = name
@@ -404,6 +401,17 @@ export async function createProduct(input: CreateProductInput) {
     }
   });
 
+  if ((input.qty ?? 0) > 0) {
+    await prisma.inventoryMovement.create({
+      data: {
+        productId: product.id,
+        type: InventoryMovementType.IN,
+        quantity: input.qty ?? 0,
+        note: "Initial stock added during product creation."
+      }
+    });
+  }
+
   const nameParts = splitProductName(product.name);
   const contentParts = splitProductContent(product.description);
 
@@ -417,6 +425,11 @@ export async function createProduct(input: CreateProductInput) {
     length: contentParts.length,
     colors: product.color,
     qty: product.inventoryCount,
+    vendor: contentParts.metadata.vendor ?? "",
+    tags: contentParts.metadata.tags ?? [],
+    seoTitle: contentParts.metadata.seoTitle ?? "",
+    seoDescription: contentParts.metadata.seoDescription ?? "",
+    publishAt: contentParts.metadata.publishAt ?? "",
     imageUrls:
       contentParts.imageUrls.length > 0
         ? contentParts.imageUrls.map((item) => normalizeStorageUrl(item)).filter((item): item is string => Boolean(item))
@@ -426,4 +439,20 @@ export async function createProduct(input: CreateProductInput) {
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null
   };
+}
+
+export async function getProductInventoryMovements(productId: string) {
+  const movements = await prisma.inventoryMovement.findMany({
+    where: { productId },
+    orderBy: { createdAt: "desc" },
+    take: 12
+  });
+
+  return movements.map((movement) => ({
+    id: movement.id,
+    type: movement.type,
+    quantity: movement.quantity,
+    note: movement.note,
+    createdAt: movement.createdAt.toISOString()
+  }));
 }

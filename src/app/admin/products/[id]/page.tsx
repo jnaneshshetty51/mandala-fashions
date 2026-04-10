@@ -5,7 +5,7 @@ import { AdminLayout } from "@/components/admin/admin-layout";
 import { ProductDeleteButton } from "@/components/admin/product-delete-button";
 import { ProductEditForm } from "@/components/admin/product-edit-form";
 import { requirePageRole } from "@/server/auth/guards";
-import { getAdminProduct } from "@/server/products/service";
+import { getAdminProduct, getProductInventoryMovements } from "@/server/products/service";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -31,6 +31,7 @@ export default async function AdminProductDetailPage({
 
   const price = Number(product.price);
   const compareAtPrice = product.compareAtPrice ? Number(product.compareAtPrice) : null;
+  const movements = await getProductInventoryMovements(id);
 
   return (
     <AdminLayout
@@ -115,6 +116,31 @@ export default async function AdminProductDetailPage({
                 <strong>Colors:</strong> {product.colors}
               </p>
             ) : null}
+            {product.vendor ? (
+              <p>
+                <strong>Vendor:</strong> {product.vendor}
+              </p>
+            ) : null}
+            {product.tags.length > 0 ? (
+              <p>
+                <strong>Tags:</strong> {product.tags.join(", ")}
+              </p>
+            ) : null}
+            {product.publishAt ? (
+              <p>
+                <strong>Publish at:</strong> {new Date(product.publishAt).toLocaleString("en-IN")}
+              </p>
+            ) : null}
+            {product.seoTitle ? (
+              <p>
+                <strong>SEO title:</strong> {product.seoTitle}
+              </p>
+            ) : null}
+            {product.seoDescription ? (
+              <p>
+                <strong>SEO description:</strong> {product.seoDescription}
+              </p>
+            ) : null}
             {product.imageUrls.length > 0 ? (
               <div>
                 <strong>Image Gallery:</strong>
@@ -173,9 +199,44 @@ export default async function AdminProductDetailPage({
             qty: product.inventoryCount,
             imageUrl: product.imageUrl,
             imageUrls: product.imageUrls,
-            status: product.status as "DRAFT" | "ACTIVE" | "ARCHIVED"
+            status: product.status as "DRAFT" | "ACTIVE" | "ARCHIVED",
+            vendor: product.vendor,
+            tags: product.tags,
+            seoTitle: product.seoTitle,
+            seoDescription: product.seoDescription,
+            publishAt: product.publishAt
           }}
         />
+      </article>
+
+      <article className="admin-table-card">
+        <div className="admin-card-header">
+          <div>
+            <h2>Inventory Timeline</h2>
+            <p>Recent stock movements for this product.</p>
+          </div>
+        </div>
+        <div className="admin-table">
+          <div className="admin-table-head" style={{ gridTemplateColumns: "1fr 0.7fr 1fr" }}>
+            <span>Movement</span>
+            <span>Qty</span>
+            <span>When</span>
+          </div>
+          {movements.length === 0 ? (
+            <div style={{ padding: "1rem 1.5rem", color: "#64748b" }}>No inventory movements recorded yet.</div>
+          ) : (
+            movements.map((movement) => (
+              <div className="admin-table-row" key={movement.id} style={{ gridTemplateColumns: "1fr 0.7fr 1fr" }}>
+                <div>
+                  <strong>{movement.type}</strong>
+                  {movement.note ? <p style={{ margin: "0.25rem 0 0", color: "#64748b" }}>{movement.note}</p> : null}
+                </div>
+                <span>{movement.quantity > 0 ? `+${movement.quantity}` : movement.quantity}</span>
+                <span>{new Date(movement.createdAt).toLocaleString("en-IN")}</span>
+              </div>
+            ))
+          )}
+        </div>
       </article>
 
       {product.variants.length > 0 ? (

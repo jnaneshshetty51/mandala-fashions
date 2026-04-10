@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ArchiveShell, ProductCard } from "@/components/archive-shell";
@@ -55,6 +56,25 @@ export function generateStaticParams() {
   return archiveProducts.map((product) => ({
     slug: product.slug
   }));
+}
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const products = await listCatalogProducts();
+  const product = products.find((item) => item.slug === slug);
+
+  if (!product) {
+    return {};
+  }
+
+  return {
+    title: product.seoTitle ?? product.name,
+    description: product.seoDescription ?? product.description
+  };
 }
 
 export default async function ProductDetailPage({
@@ -125,6 +145,7 @@ export default async function ProductDetailPage({
             <p className="product-category-line">
               {product.category} | {product.fabric} | {product.occasion}
             </p>
+            {product.vendor ? <p className="product-detail-note">By {product.vendor}</p> : null}
           </div>
 
           <div className="product-rating-row retail-rating-row">
@@ -171,6 +192,11 @@ export default async function ProductDetailPage({
           <div className="product-occasion-row retail-tag-row">
             {product.occasions.map((item) => (
               <span className="product-chip" key={item}>
+                {item}
+              </span>
+            ))}
+            {product.tags.map((item) => (
+              <span className="product-chip" key={`tag-${item}`}>
                 {item}
               </span>
             ))}

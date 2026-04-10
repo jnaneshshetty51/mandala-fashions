@@ -21,6 +21,11 @@ type ProductEditFormProps = {
     imageUrl: string | null;
     imageUrls?: string[];
     status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+    vendor: string;
+    tags: string[];
+    seoTitle: string;
+    seoDescription: string;
+    publishAt: string;
   };
 };
 
@@ -48,6 +53,13 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
   const [imageUploading, setImageUploading] = useState(false);
   const [currentQty, setCurrentQty] = useState(product.qty);
   const [inventoryDelta, setInventoryDelta] = useState(0);
+
+  function parseTags(value: string) {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
 
   function getErrorMessage(result: {
     error?: string;
@@ -149,7 +161,12 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
       price: Number(formData.get("price") ?? 0),
       sku: String(formData.get("sku") ?? ""),
       status: String(formData.get("status") ?? "DRAFT"),
-      qty: Number(formData.get("qty") ?? 0)
+      qty: Number(formData.get("qty") ?? 0),
+      vendor: String(formData.get("vendor") ?? ""),
+      tags: parseTags(String(formData.get("tags") ?? "")),
+      seoTitle: String(formData.get("seoTitle") ?? ""),
+      seoDescription: String(formData.get("seoDescription") ?? ""),
+      publishAt: String(formData.get("publishAt") ?? "")
     };
 
     payload.imageUrls = imageUrls;
@@ -267,7 +284,7 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
             <h3>Commerce settings</h3>
             <p>Update pricing, stock, status, and operational details in one place.</p>
           </div>
-          <div className="admin-form-grid admin-form-grid-three">
+        <div className="admin-form-grid admin-form-grid-three">
             <label>
               <span>Length</span>
               <input defaultValue={product.length || undefined} name="length" type="text" />
@@ -295,9 +312,38 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
             <label>
               <span>Qty Snapshot</span>
               <input defaultValue={product.qty} min="0" name="qty" type="number" />
-            </label>
-          </div>
+          </label>
         </div>
+      </div>
+
+      <div className="admin-form-section">
+        <div className="admin-form-section-header">
+          <h3>Search & organization</h3>
+          <p>Manage vendor data, collection-like tags, SEO copy, and scheduled publishing.</p>
+        </div>
+        <div className="admin-form-grid admin-form-grid-two">
+          <label>
+            <span>Vendor</span>
+            <input defaultValue={product.vendor || undefined} name="vendor" type="text" />
+          </label>
+          <label>
+            <span>Publish At</span>
+            <input defaultValue={product.publishAt || undefined} name="publishAt" type="datetime-local" />
+          </label>
+          <label className="admin-form-grid-span-2">
+            <span>Tags</span>
+            <input defaultValue={product.tags.join(", ")} name="tags" type="text" />
+          </label>
+          <label className="admin-form-grid-span-2">
+            <span>SEO Title</span>
+            <input defaultValue={product.seoTitle || undefined} name="seoTitle" type="text" />
+          </label>
+          <label className="admin-form-grid-span-2">
+            <span>SEO Description</span>
+            <textarea defaultValue={product.seoDescription || undefined} name="seoDescription" rows={3} />
+          </label>
+        </div>
+      </div>
 
         <AdminImageManager
           imageUploading={imageUploading}

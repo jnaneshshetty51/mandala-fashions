@@ -79,6 +79,18 @@ function optionalInteger(minValue?: number) {
   }, typeof minValue === "number" ? z.coerce.number().int().min(minValue).optional() : z.coerce.number().int().optional());
 }
 
+function optionalStringArray() {
+  return z.preprocess((value) => {
+    if (!Array.isArray(value)) {
+      return value;
+    }
+
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : item))
+      .filter((item) => typeof item === "string" && item.length > 0);
+  }, z.array(z.string()).optional());
+}
+
 const createProductSchema = z.object({
   category: z.string().min(2),
   material: z.string().min(2),
@@ -92,7 +104,12 @@ const createProductSchema = z.object({
   qty: z.coerce.number().int().min(0).optional(),
   imageUrl: optionalMediaUrlString(),
   imageUrls: z.array(mediaUrlString()).optional(),
-  status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
+  status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(),
+  vendor: optionalTrimmedString(),
+  tags: optionalStringArray(),
+  seoTitle: optionalTrimmedString(),
+  seoDescription: optionalTrimmedString(),
+  publishAt: optionalTrimmedString()
 });
 
 const updateProductSchema = z
@@ -109,7 +126,12 @@ const updateProductSchema = z
     imageUrl: optionalMediaUrlString(),
     imageUrls: z.array(mediaUrlString()).optional(),
     qty: optionalInteger(0),
-    status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional()
+    status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(),
+    vendor: optionalTrimmedString(),
+    tags: optionalStringArray(),
+    seoTitle: optionalTrimmedString(),
+    seoDescription: optionalTrimmedString(),
+    publishAt: optionalTrimmedString()
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field must be provided."

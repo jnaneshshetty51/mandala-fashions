@@ -1,4 +1,4 @@
-import { OrderStatus, Prisma } from "@prisma/client";
+import { InventoryMovementType, OrderStatus, Prisma } from "@prisma/client";
 
 import { resolvePurchasableCartItems } from "@/server/catalog/purchasing";
 import { prisma } from "@/server/db";
@@ -240,7 +240,7 @@ export async function createOrder(input: CreateOrderInput) {
 
     const orderNumber = await generateUniqueOrderNumber(tx);
 
-    return tx.order.create({
+    const createdOrder = await tx.order.create({
       data: {
         orderNumber,
         userId: input.userId,
@@ -278,6 +278,19 @@ export async function createOrder(input: CreateOrderInput) {
         }
       }
     });
+
+    for (const [productId, requestedQuantity] of quantityByProduct.entries()) {
+      await tx.inventoryMovement.create({
+        data: {
+          productId,
+          type: InventoryMovementType.OUT,
+          quantity: -requestedQuantity,
+          note: `Reserved by order ${createdOrder.orderNumber}.`
+        }
+      });
+    }
+
+    return createdOrder;
   });
 
   if (validatedCouponCode) {

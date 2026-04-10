@@ -7,6 +7,7 @@ import { AdminImageManager } from "@/components/admin/admin-image-manager";
 
 type FormState = {
   isSubmitting: boolean;
+  isRedirecting: boolean;
   error: string | null;
   success: string | null;
 };
@@ -15,11 +16,19 @@ export function ProductCreateForm() {
   const router = useRouter();
   const [state, setState] = useState<FormState>({
     isSubmitting: false,
+    isRedirecting: false,
     error: null,
     success: null
   });
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageUploading, setImageUploading] = useState(false);
+
+  function parseTags(value: string) {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
 
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -91,7 +100,7 @@ export function ProductCreateForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setState({ isSubmitting: true, error: null, success: null });
+    setState({ isSubmitting: true, isRedirecting: false, error: null, success: null });
 
     const formData = new FormData(event.currentTarget);
     const payload = {
@@ -107,6 +116,11 @@ export function ProductCreateForm() {
       qty: Number(formData.get("qty") ?? 0),
       imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
       status: String(formData.get("status") ?? "DRAFT"),
+      vendor: String(formData.get("vendor") ?? "") || undefined,
+      tags: parseTags(String(formData.get("tags") ?? "")),
+      seoTitle: String(formData.get("seoTitle") ?? "") || undefined,
+      seoDescription: String(formData.get("seoDescription") ?? "") || undefined,
+      publishAt: String(formData.get("publishAt") ?? "") || undefined
     };
 
     const response = await fetch("/api/admin/products", {
@@ -122,6 +136,7 @@ export function ProductCreateForm() {
     if (!response.ok) {
       setState({
         isSubmitting: false,
+        isRedirecting: false,
         error: result?.error ?? "Unable to create product right now.",
         success: null
       });
@@ -132,12 +147,19 @@ export function ProductCreateForm() {
     setImageUrls([]);
 
     if (result?.data?.id) {
-      router.push(`/admin/products/${result.data.id}`);
+      setState({
+        isSubmitting: false,
+        isRedirecting: true,
+        error: null,
+        success: "Product created successfully. Opening the editor..."
+      });
+      window.location.assign(`/admin/products/${result.data.id}`);
       return;
     }
 
     setState({
       isSubmitting: false,
+      isRedirecting: false,
       error: null,
       success: "Product created successfully. It is now available in the storefront catalog."
     });
@@ -217,6 +239,39 @@ export function ProductCreateForm() {
         </div>
       </div>
 
+      <div className="admin-form-section">
+        <div className="admin-form-section-header">
+          <h3>Search & organization</h3>
+          <p>Add vendor, tags, SEO details, and a scheduled publish time for better merchandising control.</p>
+        </div>
+        <div className="admin-form-grid admin-form-grid-two">
+          <label>
+            <span>Vendor</span>
+            <input name="vendor" placeholder="Mandala Atelier" type="text" />
+          </label>
+          <label>
+            <span>Publish At</span>
+            <input name="publishAt" type="datetime-local" />
+          </label>
+          <label className="admin-form-grid-span-2">
+            <span>Tags</span>
+            <input name="tags" placeholder="bridal, silk, festive, handloom" type="text" />
+          </label>
+          <label className="admin-form-grid-span-2">
+            <span>SEO Title</span>
+            <input name="seoTitle" placeholder="Banarasi Saree for Bridal & Festive Wear | Mandala" type="text" />
+          </label>
+          <label className="admin-form-grid-span-2">
+            <span>SEO Description</span>
+            <textarea
+              name="seoDescription"
+              placeholder="Short search result description for this product page."
+              rows={3}
+            />
+          </label>
+        </div>
+      </div>
+
       <AdminImageManager
         imageUploading={imageUploading}
         imageUrls={imageUrls}
@@ -231,8 +286,8 @@ export function ProductCreateForm() {
       {state.error ? <p className="admin-form-message error">{state.error}</p> : null}
 
       <div className="admin-settings-actions">
-        <button className="admin-primary-button" disabled={state.isSubmitting || imageUploading} type="submit">
-          {state.isSubmitting ? "Creating..." : "Create Product"}
+        <button className="admin-primary-button" disabled={state.isSubmitting || state.isRedirecting || imageUploading} type="submit">
+          {state.isSubmitting ? "Creating..." : state.isRedirecting ? "Opening..." : "Create Product"}
         </button>
       </div>
     </form>
