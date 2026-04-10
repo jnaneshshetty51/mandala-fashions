@@ -167,7 +167,7 @@ function markDatabaseFailure() {
 async function loadDatabaseCatalogProducts() {
   const products = await prisma.product.findMany({
     where: {
-      status: { in: ["ACTIVE", "DRAFT"] }
+      status: "ACTIVE"
     },
     orderBy: {
       createdAt: "desc"

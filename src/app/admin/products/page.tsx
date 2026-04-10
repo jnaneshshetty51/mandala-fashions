@@ -1,18 +1,12 @@
 import Link from "next/link";
 
 import { AdminLayout } from "@/components/admin/admin-layout";
+import { BulkActivateButton } from "@/components/admin/bulk-activate-button";
 import { BulkImportForm } from "@/components/admin/bulk-import-form";
+import { ProductCatalogTable } from "@/components/admin/product-catalog-table";
 import { ProductCreateForm } from "@/components/admin/product-create-form";
 import { requirePageRole } from "@/server/auth/guards";
 import { prisma } from "@/server/db";
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0
-  }).format(value);
-}
 
 const VALID_STATUSES = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
 type ValidStatus = (typeof VALID_STATUSES)[number];
@@ -141,6 +135,7 @@ export default async function AdminProductsPage({
             <span>Live products</span>
             <strong>{activeCount}</strong>
             <small>{draftCount} draft, {archivedCount} archived</small>
+            {draftCount > 0 ? <BulkActivateButton draftCount={draftCount} /> : null}
           </article>
           <article className="admin-products-stat-card">
             <span>Low stock</span>
@@ -224,57 +219,12 @@ export default async function AdminProductsPage({
             {statusFilter ? <span>Status: {statusFilter}</span> : null}
           </div>
 
-          <div className="admin-table admin-products-table">
-            <div className="admin-table-head admin-table-head-products admin-products-table-head">
-              <span>Product</span>
-              <span>SKU</span>
-              <span>Material</span>
-              <span>Variants</span>
-              <span>Qty</span>
-              <span>Status</span>
-              <span>Price</span>
-              <span>Actions</span>
-            </div>
-            {products.length === 0 ? (
-              <div className="admin-products-empty">
-                <strong>No products match the current filters.</strong>
-                <span>Try a different search, or clear the filter to view the full catalog.</span>
-              </div>
-            ) : (
-              products.map((product) => (
-                <div className="admin-table-row admin-table-row-products admin-products-table-row" key={product.id}>
-                  <div className="admin-products-main-cell">
-                    <div className="admin-products-identity">
-                      <div
-                        className="admin-products-thumb"
-                        style={product.imageUrl ? { backgroundImage: `url('${product.imageUrl}')` } : undefined}
-                      />
-                      <div className="admin-products-main-copy">
-                        <strong>
-                          <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
-                        </strong>
-                        <span>{product.category} · {product.material}</span>
-                        <small>Updated {formatUpdatedAt(product.updatedAt)}</small>
-                      </div>
-                    </div>
-                  </div>
-                  <span>{product.sku}</span>
-                  <span>{product.material}</span>
-                  <span>{product.variants}</span>
-                  <span className={product.inventoryCount <= 3 ? "admin-stock-pill is-low" : "admin-stock-pill"}>
-                    {product.inventoryCount}
-                  </span>
-                  <em className={`status-${product.status.toLowerCase()}`}>{product.status}</em>
-                  <strong>{formatCurrency(product.price)}</strong>
-                  <span>
-                    <Link className="admin-secondary-button" href={`/admin/products/${product.id}`}>
-                      Edit
-                    </Link>
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
+          <ProductCatalogTable
+            products={products.map((product) => ({
+              ...product,
+              updatedAtLabel: formatUpdatedAt(product.updatedAt)
+            }))}
+          />
         </article>
       </section>
     </AdminLayout>

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireRequestRole } from "@/server/auth/guards";
 import { listAdminProducts } from "@/server/admin/service";
+import { prisma } from "@/server/db";
 import {
   adjustInventory,
   bulkImportProducts,
@@ -145,6 +146,10 @@ const inventorySchema = z.object({
   delta: z.number().int()
 });
 
+const bulkDeleteSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(100)
+});
+
 export const adminProductsRouter = Router();
 
 // POST / — create product
@@ -273,6 +278,65 @@ adminProductsRouter.patch(
 
     const product = await updateProduct(id, { status: parsed.data.status });
     res.json({ data: product });
+  })
+);
+
+// POST /bulk-activate — set all DRAFT products to ACTIVE
+adminProductsRouter.post(
+  "/bulk-activate",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const result = await prisma.product.updateMany({
+      where: { status: "DRAFT" },
+      data: { status: "ACTIVE" }
+    });
+
+    res.json({ data: { activated: result.count } });
+  })
+);
+
+// POST /bulk-delete — delete selected products
+adminProductsRouter.post(
+  "/bulk-delete",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = requireRequestRole(req, res, ["ADMIN"]);
+    if (!user) return;
+
+    const parsed = bulkDeleteSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid bulk delete payload.", details: parsed.error.flatten() });
+      return;
+    }
+
+    const failed: Array<{ id: string; error: string }> = [];
+    let deleted = 0;
+
+    for (const id of parsed.data.ids) {
+      const existing = await getAdminProduct(id);
+      if (!existing) {
+        failed.push({ id, error: "Product not found." });
+        continue;
+      }
+
+      try {
+        await deleteProduct(id);
+        deleted += 1;
+      } catch (error) {
+        failed.push({
+          id,
+          error: error instanceof Error ? error.message : "Unable to delete product."
+        });
+      }
+    }
+
+    if (deleted === 0 && failed.length > 0) {
+      res.status(409).json({ error: failed[0]?.error ?? "No selected products could be deleted.", data: { deleted, failed } });
+      return;
+    }
+
+    res.json({ data: { deleted, failed } });
   })
 );
 

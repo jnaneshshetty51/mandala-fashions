@@ -24,6 +24,7 @@ export default async function AdminPage() {
   const totalRevenue = snapshot.recentOrders.reduce((sum, item) => sum + item.totalAmount, 0);
   const totalItems = snapshot.recentOrders.reduce((sum, item) => sum + item.itemCount, 0);
   const { catalogSummary, recentProducts } = snapshot;
+  const greetingName = user.name.split(" ")[0] ?? user.name;
 
   return (
     <AdminLayout
@@ -38,62 +39,12 @@ export default async function AdminPage() {
       ]}
       user={user}
     >
-      <section className="admin-hero-panel">
-        <div className="admin-hero-copy">
-          <p className="admin-eyebrow">Today at a glance</p>
-          <h2>Everything important is one scroll away.</h2>
-          <p>
-            Monitor sales, inventory movement, customer activity, and merchandising health from one
-            workspace designed for day-to-day store operations.
-          </p>
-
-          <div className="admin-action-row">
-            <Link className="admin-primary-button" href="/admin/products">
-              Add Product
-            </Link>
-            <Link className="admin-ghost-button" href="/admin/orders">
-              Review Orders
-            </Link>
-            <Link className="admin-ghost-button" href="/admin/customers">
-              Open Customers
-            </Link>
-          </div>
-        </div>
-
-        <div className="admin-hero-meta">
-          <div className="admin-kpi-strip">
-            <article className="admin-kpi-item">
-              <span>Revenue Snapshot</span>
-              <strong>
-                {new Intl.NumberFormat("en-IN", {
-                  style: "currency",
-                  currency: "INR",
-                  maximumFractionDigits: 0
-                }).format(totalRevenue)}
-              </strong>
-              <small>From the latest listed orders</small>
-            </article>
-            <article className="admin-kpi-item">
-              <span>Units Moving</span>
-              <strong>{totalItems}</strong>
-              <small>Items across recent orders</small>
-            </article>
-            <article className="admin-kpi-item">
-              <span>Best Selling Fabric</span>
-              <strong>{snapshot.topFabrics[0]?.name ?? "Silk"}</strong>
-              <small>{snapshot.topFabrics[0]?.share ?? "Stable mix"}</small>
-            </article>
-          </div>
-
-          <div className="admin-chip-list">
-            <span>Live catalog monitoring</span>
-            <span>Quick order handling</span>
-            <span>Customer context visible</span>
-          </div>
-        </div>
+      <section className="admin-overview-toolbar">
+        <span className="admin-filter-pill">Last 30 days</span>
+        <span className="admin-filter-pill">Online store</span>
       </section>
 
-      <section className="admin-metric-grid">
+      <section className="admin-summary-rail">
         {snapshot.metrics.map((metric) => (
           <AdminStatCard
             helper={metric.delta}
@@ -103,6 +54,57 @@ export default async function AdminPage() {
             value={metric.value}
           />
         ))}
+      </section>
+
+      <section className="admin-command-center">
+        <article className="admin-command-panel">
+          <div className="admin-command-copy">
+            <p className="admin-eyebrow">Good morning</p>
+            <h2>{greetingName}, here’s what needs attention today.</h2>
+            <p>
+              Keep orders moving, maintain product availability, and update storefront content from one
+              workspace designed around the features already available in Mandala Fashions.
+            </p>
+          </div>
+
+          <div className="admin-action-row">
+            <Link className="admin-primary-button" href="/admin/products">
+              Add product
+            </Link>
+            <Link className="admin-ghost-button" href="/admin/orders">
+              Review orders
+            </Link>
+            <Link className="admin-ghost-button" href="/admin/content">
+              Update content
+            </Link>
+          </div>
+        </article>
+
+        <article className="admin-assistant-card">
+          <div className="admin-card-header">
+            <div>
+              <h2>Quick snapshot</h2>
+              <p>Use this as your at-a-glance checkpoint before jumping into work.</p>
+            </div>
+          </div>
+          <div className="admin-kpi-strip">
+            <article className="admin-kpi-item">
+              <span>Revenue snapshot</span>
+              <strong>{formatCurrency(totalRevenue)}</strong>
+              <small>From the latest listed orders</small>
+            </article>
+            <article className="admin-kpi-item">
+              <span>Units moving</span>
+              <strong>{totalItems}</strong>
+              <small>Items across recent orders</small>
+            </article>
+            <article className="admin-kpi-item">
+              <span>Best selling fabric</span>
+              <strong>{snapshot.topFabrics[0]?.name ?? "Silk"}</strong>
+              <small>{snapshot.topFabrics[0]?.share ?? "Stable mix"}</small>
+            </article>
+          </div>
+        </article>
       </section>
 
       {/* Catalog Health */}
@@ -219,7 +221,7 @@ export default async function AdminPage() {
           <div className="admin-card-header">
             <div>
               <h2>Sales Performance</h2>
-              <p>Track order movement, revenue direction, and month-on-month demand changes.</p>
+              <p>Track demand, order activity, and current conversion direction.</p>
             </div>
             <div className="admin-legend">
               <span>
@@ -245,11 +247,11 @@ export default async function AdminPage() {
           <div className="admin-chart-footer">
             <div>
               <strong>Conversion momentum</strong>
-              <span>Healthy repeat activity across current catalog traffic.</span>
+              <span>Monitor performance alongside inventory health and order speed.</span>
             </div>
             <div>
               <strong>Primary focus</strong>
-              <span>Protect top sellers from low-stock drop-offs.</span>
+              <span>Protect high-intent products from low-stock drop-offs.</span>
             </div>
           </div>
         </article>
@@ -282,7 +284,7 @@ export default async function AdminPage() {
 
           <article className="admin-growth-card">
             <h2>Operational Focus</h2>
-            <p>Fast links for the tasks the team is most likely to handle next.</p>
+            <p>Fast access to the workflows currently supported in your admin.</p>
             <div className="admin-quick-links">
               <Link href="/admin/orders">Process pending orders</Link>
               <Link href="/admin/products">Update inventory and pricing</Link>
@@ -298,7 +300,7 @@ export default async function AdminPage() {
           <div className="admin-card-header">
             <div>
               <h2>Customer Growth</h2>
-              <p>New member movement and CRM expansion over the current cycle.</p>
+              <p>Track member momentum using the customer records currently inside the store.</p>
             </div>
           </div>
           <div className="admin-bar-chart">

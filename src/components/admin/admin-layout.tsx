@@ -14,14 +14,30 @@ type AdminNavKey =
   | "content"
   | "settings";
 
-const sidebarLinks: Array<{ key: AdminNavKey; label: string; href: string }> = [
-  { key: "analytics", label: "Analytics", href: "/admin" },
-  { key: "products", label: "Products", href: "/admin/products" },
-  { key: "orders", label: "Orders", href: "/admin/orders" },
-  { key: "customers", label: "Customers", href: "/admin/customers" },
-  { key: "marketing", label: "Marketing", href: "/admin/marketing" },
-  { key: "content", label: "Content", href: "/admin/content" },
-  { key: "settings", label: "Settings", href: "/admin/settings" }
+const sidebarGroups: Array<{
+  heading: string;
+  items: Array<{ key: AdminNavKey; label: string; href: string; icon: string }>;
+}> = [
+  {
+    heading: "Overview",
+    items: [{ key: "analytics", label: "Home", href: "/admin", icon: "home" }]
+  },
+  {
+    heading: "Commerce",
+    items: [
+      { key: "orders", label: "Orders", href: "/admin/orders", icon: "orders" },
+      { key: "products", label: "Products", href: "/admin/products", icon: "products" },
+      { key: "customers", label: "Customers", href: "/admin/customers", icon: "customers" },
+      { key: "marketing", label: "Marketing", href: "/admin/marketing", icon: "marketing" }
+    ]
+  },
+  {
+    heading: "Storefront",
+    items: [
+      { key: "content", label: "Content", href: "/admin/content", icon: "content" },
+      { key: "settings", label: "Settings", href: "/admin/settings", icon: "settings" }
+    ]
+  }
 ];
 
 const SIDEBAR_STORAGE_KEY = "mandala-admin-sidebar-collapsed";
@@ -65,8 +81,8 @@ export function AdminLayout({
       <aside className="admin-sidebar">
         <div className="admin-sidebar-inner">
           <div className="admin-brand">
-            <Link href="/">
-              <BrandLogo className="brand-logo admin-brand-logo" width={170} />
+            <Link className="admin-brand-link" href="/">
+              <BrandLogo className="brand-logo admin-brand-logo" width={136} />
             </Link>
 
             <button
@@ -91,24 +107,34 @@ export function AdminLayout({
             <span className="admin-sidebar-label">{createLabel}</span>
           </button>
 
-          <nav className="admin-nav" aria-label="Admin navigation">
-            {sidebarLinks.map((item) => (
-              <Link
-                aria-label={isSidebarCollapsed ? item.label : undefined}
-                className={item.key === active ? "is-active" : undefined}
-                href={item.href}
-                key={item.key}
-              >
-                <span className="admin-sidebar-label">{item.label}</span>
-              </Link>
+          <div className="admin-nav-groups">
+            {sidebarGroups.map((group) => (
+              <div className="admin-nav-group" key={group.heading}>
+                <p className="admin-nav-heading admin-sidebar-label">{group.heading}</p>
+                <nav className="admin-nav" aria-label={group.heading}>
+                  {group.items.map((item) => (
+                    <Link
+                      aria-label={isSidebarCollapsed ? item.label : undefined}
+                      className={item.key === active ? "is-active" : undefined}
+                      href={item.href}
+                      key={item.key}
+                    >
+                      <span className={`admin-nav-icon admin-nav-icon-${item.icon}`} aria-hidden="true" />
+                      <span className="admin-sidebar-label">{item.label}</span>
+                    </Link>
+                  ))}
+                </nav>
+              </div>
             ))}
-          </nav>
+          </div>
 
           <div className="admin-sidebar-footer">
-            <Link aria-label={isSidebarCollapsed ? "Settings" : undefined} href="/admin/settings">
-              <span className="admin-sidebar-label">Settings</span>
+            <Link aria-label={isSidebarCollapsed ? "Store settings" : undefined} href="/admin/settings">
+              <span className="admin-nav-icon admin-nav-icon-settings" aria-hidden="true" />
+              <span className="admin-sidebar-label">Store settings</span>
             </Link>
             <Link aria-label={isSidebarCollapsed ? "Support" : undefined} href="/contact">
+              <span className="admin-nav-icon admin-nav-icon-support" aria-hidden="true" />
               <span className="admin-sidebar-label">Support</span>
             </Link>
           </div>
@@ -119,7 +145,8 @@ export function AdminLayout({
         <header className="admin-topbar">
           <div className="admin-search">
             <span className="icon-search" />
-            <input placeholder="Search archive..." type="text" />
+            <input placeholder="Search products, orders, or customers" type="text" />
+            <span className="admin-search-shortcut">/</span>
           </div>
 
           <nav className="admin-topnav" aria-label="Admin section navigation">
@@ -131,6 +158,7 @@ export function AdminLayout({
           </nav>
 
           <div className="admin-userbar">
+            <span className="admin-store-pill">Online store</span>
             <button className="admin-icon-button" type="button" aria-label="Notifications">
               <span className="admin-bell" />
             </button>
