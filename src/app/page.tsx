@@ -99,8 +99,160 @@ const shoppingNeeds = [
   }
 ];
 
-export default async function HomePage() {
+const homeBrowseOccasionFilters = [
+  { label: "All", value: "all" },
+  { label: "Wedding", value: "Wedding" },
+  { label: "Festive", value: "Festive" },
+  { label: "Office", value: "Office" },
+  { label: "Party", value: "Party" }
+] as const;
+
+const homeBrowseTrendFilters = [
+  { label: "All", value: "all" },
+  { label: "Silk Icons", value: "silk-icons" },
+  { label: "Soft Pastels", value: "soft-pastels" },
+  { label: "Office Classics", value: "office-classics" },
+  { label: "Evening Glam", value: "evening-glam" }
+] as const;
+
+const homeBrowseBudgetFilters = [
+  { label: "All", value: "all" },
+  { label: "Under ₹5k", value: "under-5000" },
+  { label: "₹5k-₹15k", value: "5000-15000" },
+  { label: "₹15k-₹30k", value: "15000-30000" },
+  { label: "₹30k+", value: "30000-plus" }
+] as const;
+
+function normalizeValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function parsePriceValue(price: string) {
+  const numericValue = Number(price.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function buildHomeBrowseHref(
+  currentFilters: { occasion: string; trend: string; budget: string },
+  updates: Partial<{ occasion: string; trend: string; budget: string }>
+) {
+  const nextFilters = { ...currentFilters, ...updates };
+  const params = new URLSearchParams();
+
+  if (nextFilters.occasion !== "all") params.set("browseOccasion", nextFilters.occasion);
+  if (nextFilters.trend !== "all") params.set("browseTrend", nextFilters.trend);
+  if (nextFilters.budget !== "all") params.set("browseBudget", nextFilters.budget);
+
+  const queryString = params.toString();
+  return queryString.length > 0 ? `/?${queryString}#shop-by-filters` : "/#shop-by-filters";
+}
+
+function buildShopBrowseHref(filters: { occasion: string; trend: string; budget: string }) {
+  const params = new URLSearchParams();
+
+  if (filters.occasion !== "all") params.set("occasion", filters.occasion);
+
+  if (filters.trend === "silk-icons") {
+    params.set("fabric", "Silk");
+  } else if (filters.trend === "soft-pastels") {
+    params.set("color", "Ivory");
+  } else if (filters.trend === "office-classics") {
+    params.set("occasion", "Office");
+    params.set("fabric", "Cotton");
+  } else if (filters.trend === "evening-glam") {
+    params.set("occasion", filters.occasion !== "all" ? filters.occasion : "Party");
+  }
+
+  const queryString = params.toString();
+  return queryString.length > 0 ? `/shop?${queryString}` : "/shop";
+}
+
+function matchesHomeTrend(
+  trend: string,
+  product: { fabric: string; occasion: string; occasions: string[]; color: string; name: string; description: string; label: string }
+) {
+  if (trend === "all") return true;
+
+  const searchableText = [
+    product.fabric,
+    product.occasion,
+    product.color,
+    product.name,
+    product.description,
+    product.label,
+    ...product.occasions
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (trend === "silk-icons") {
+    return normalizeValue(product.fabric).includes("silk") || searchableText.includes("banarasi") || searchableText.includes("kanchipuram");
+  }
+
+  if (trend === "soft-pastels") {
+    return ["ivory", "blush", "pink", "peach", "mint", "sage", "powder", "lavender", "floral", "pastel", "beige", "cream"]
+      .some((term) => searchableText.includes(term));
+  }
+
+  if (trend === "office-classics") {
+    return ["office", "casual", "daily wear", "cotton", "travel", "meeting"].some((term) =>
+      searchableText.includes(term)
+    );
+  }
+
+  if (trend === "evening-glam") {
+    return ["evening", "party", "reception", "cocktail", "zari", "celebration", "glam"].some((term) =>
+      searchableText.includes(term)
+    );
+  }
+
+  return true;
+}
+
+function matchesHomeBudget(budget: string, priceValue: number) {
+  if (budget === "all") return true;
+  if (budget === "under-5000") return priceValue < 5000;
+  if (budget === "5000-15000") return priceValue >= 5000 && priceValue <= 15000;
+  if (budget === "15000-30000") return priceValue > 15000 && priceValue <= 30000;
+  if (budget === "30000-plus") return priceValue > 30000;
+  return true;
+}
+
+export default async function HomePage({
+  searchParams
+}: {
+  searchParams?: Promise<{ browseOccasion?: string; browseTrend?: string; browseBudget?: string }>;
+}) {
   const products = await listCatalogProducts();
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const activeOccasion = homeBrowseOccasionFilters.some((item) => item.value === resolvedSearchParams.browseOccasion)
+    ? resolvedSearchParams.browseOccasion ?? "all"
+    : "all";
+  const activeTrend = homeBrowseTrendFilters.some((item) => item.value === resolvedSearchParams.browseTrend)
+    ? resolvedSearchParams.browseTrend ?? "all"
+    : "all";
+  const activeBudget = homeBrowseBudgetFilters.some((item) => item.value === resolvedSearchParams.browseBudget)
+    ? resolvedSearchParams.browseBudget ?? "all"
+    : "all";
+  const activeBrowseFilters = {
+    occasion: activeOccasion,
+    trend: activeTrend,
+    budget: activeBudget
+  };
+  const featuredBrowseProducts = products
+    .filter((product) => {
+      const matchesOccasion =
+        activeOccasion === "all" ||
+        normalizeValue(product.occasion).includes(normalizeValue(activeOccasion)) ||
+        product.occasions.some((item) => normalizeValue(item).includes(normalizeValue(activeOccasion)));
+
+      return (
+        matchesOccasion &&
+        matchesHomeTrend(activeTrend, product) &&
+        matchesHomeBudget(activeBudget, parsePriceValue(product.price))
+      );
+    })
+    .slice(0, 5);
 
   // New arrivals = most recently added (DB returns newest first)
   const newArrivals = products.slice(0, 8);
@@ -197,29 +349,108 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="fashion-section">
+      <section className="fashion-section home-browse-section" id="shop-by-filters">
         <div className="fashion-title-block">
           <p className="eyebrow">Big deals</p>
           <h2>Shop by occasion, trend, and budget</h2>
         </div>
-        <div className="fashion-promo-grid dense-promo-grid">
-          {promoTiles.map((tile) => (
-            <article className="fashion-promo-card" key={tile.title}>
-              <div
-                className="fashion-promo-image"
-                style={{
-                  backgroundImage: `linear-gradient(180deg, rgba(20, 12, 9, 0.04), rgba(20, 12, 9, 0.18)), url('${tile.imagePath}')`
-                }}
-              />
-              <div className="fashion-promo-copy">
-                <h3>{tile.title}</h3>
-                <p>{tile.subtitle}</p>
-                <Link href={tile.title === "Wedding Store" ? "/shop?occasion=Wedding" : tile.title === "Office Store" ? "/shop?occasion=Office" : "/shop"}>
-                  Shop Now
+        <div className="home-browse-layout">
+          <aside className="home-browse-panel">
+            <div className="home-browse-filter-group">
+              <p>Occasion</p>
+              <div className="home-browse-chip-row">
+                {homeBrowseOccasionFilters.map((filter) => (
+                  <Link
+                    className={filter.value === activeOccasion ? "is-active" : undefined}
+                    href={buildHomeBrowseHref(activeBrowseFilters, { occasion: filter.value })}
+                    key={filter.value}
+                  >
+                    {filter.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="home-browse-filter-group">
+              <p>Trend</p>
+              <div className="home-browse-chip-row">
+                {homeBrowseTrendFilters.map((filter) => (
+                  <Link
+                    className={filter.value === activeTrend ? "is-active" : undefined}
+                    href={buildHomeBrowseHref(activeBrowseFilters, { trend: filter.value })}
+                    key={filter.value}
+                  >
+                    {filter.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="home-browse-filter-group">
+              <p>Budget</p>
+              <div className="home-browse-chip-row">
+                {homeBrowseBudgetFilters.map((filter) => (
+                  <Link
+                    className={filter.value === activeBudget ? "is-active" : undefined}
+                    href={buildHomeBrowseHref(activeBrowseFilters, { budget: filter.value })}
+                    key={filter.value}
+                  >
+                    {filter.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <Link className="text-link" href={buildShopBrowseHref(activeBrowseFilters)}>
+              Browse all matching sarees
+            </Link>
+          </aside>
+
+          <div className="home-browse-results">
+            <div className="section-heading-row home-browse-results-header">
+              <div>
+                <p className="eyebrow">Live results</p>
+                <h2>{featuredBrowseProducts.length > 0 ? "Matching picks for you" : "No exact match yet"}</h2>
+              </div>
+              <span className="home-browse-results-count">
+                {featuredBrowseProducts.length} product{featuredBrowseProducts.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            {featuredBrowseProducts.length > 0 ? (
+              <div className="products-grid compact-grid">
+                {featuredBrowseProducts.map((product) => (
+                  <div className="home-product-stack" key={product.slug}>
+                    <ProductCard
+                      artClass={product.artClass}
+                      href={`/products/${product.slug}`}
+                      imageUrl={product.imageUrl}
+                      label={product.fabric}
+                      name={product.name}
+                      price={product.price}
+                    />
+                    <p className="fashion-discount-line">{product.occasion} edit</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <article className="home-browse-empty">
+                <h3>No products match this exact combination.</h3>
+                <p>Try broadening one filter to see more wedding, festive, office, and trend-led picks.</p>
+                <Link className="text-link" href="/#shop-by-filters">
+                  Reset homepage filters
+                </Link>
+              </article>
+            )}
+
+            {featuredBrowseProducts.length > 0 ? (
+              <div className="home-browse-footer">
+                <Link className="primary-button text-button" href={buildShopBrowseHref(activeBrowseFilters)}>
+                  View all in shop
                 </Link>
               </div>
-            </article>
-          ))}
+            ) : null}
+          </div>
         </div>
       </section>
 
