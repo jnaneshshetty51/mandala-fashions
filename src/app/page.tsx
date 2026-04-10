@@ -22,29 +22,6 @@ const brandChips = [
   { label: "Daily Wear", href: "/shop?occasion=Casual" }
 ];
 
-const promoTiles = [
-  {
-    title: "Wedding Store",
-    subtitle: "Flat 10% off on your first bridal order",
-    imagePath: "/homepage-assets/b93301f842aed71f39492ba6d5bdd216.jpg"
-  },
-  {
-    title: "Under ₹1,999",
-    subtitle: "Affordable festive and daily-wear sarees",
-    imagePath: "/homepage-assets/6761b750dbfae854650f47dc911f13af.jpg"
-  },
-  {
-    title: "Soft Organza Edit",
-    subtitle: "Pastel drapes and floral stories",
-    imagePath: "/homepage-assets/6a2cbe5ce9b56f8aaf9e04935473d540.jpg"
-  },
-  {
-    title: "Office Store",
-    subtitle: "Elegant workwear sarees for daily rotation",
-    imagePath: "/homepage-assets/1f1049120cfa2eb983d11f1c76bbef2a.jpg"
-  }
-];
-
 const spotlightTiles = [
   {
     title: "Trending in Silk",

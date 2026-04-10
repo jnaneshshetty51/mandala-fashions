@@ -1921,6 +1921,109 @@ input {
   color: var(--deep-green);
 }
 
+.home-browse-section {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.home-browse-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.7fr) minmax(0, 1.8fr);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.home-browse-panel,
+.home-browse-results,
+.home-browse-empty {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 14px 30px rgba(28, 22, 16, 0.05);
+}
+
+.home-browse-panel,
+.home-browse-results {
+  padding: 1.25rem;
+}
+
+.home-browse-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-browse-filter-group {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.home-browse-filter-group p,
+.home-browse-results-count {
+  margin: 0;
+  color: #7f7262;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.home-browse-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.home-browse-chip-row a {
+  padding: 0.72rem 0.9rem;
+  border: 1px solid rgba(28, 22, 16, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  color: #5d5146;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  transition:
+    transform 160ms var(--ease-out),
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.home-browse-chip-row a:hover,
+.home-browse-chip-row a.is-active {
+  border-color: var(--deep-green);
+  background: var(--deep-green);
+  color: #f7f2e8;
+  transform: translateY(-1px);
+}
+
+.home-browse-results {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-browse-results-header {
+  align-items: end;
+}
+
+.home-browse-results .products-grid.compact-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.home-browse-footer {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.home-browse-empty {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.4rem;
+}
+
+.home-browse-empty h3,
+.home-browse-empty p {
+  margin: 0;
+}
+
 .fashion-deal-mosaic {
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(220px, 0.7fr) minmax(220px, 0.7fr);
@@ -2475,6 +2578,7 @@ input {
   .fashion-promo-grid,
   .fashion-spotlight-grid,
   .fashion-service-grid,
+  .home-browse-layout,
   .account-grid,
   .account-dashboard,
   .checkout-step-list,
@@ -2503,6 +2607,10 @@ input {
   .fashion-section .products-grid.compact-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .home-browse-results .products-grid.compact-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {
@@ -2514,6 +2622,7 @@ input {
   .fashion-promo-grid,
   .fashion-spotlight-grid,
   .fashion-service-grid,
+  .home-browse-layout,
   .fashion-newsletter-form,
   .fashion-quick-grid,
   .retail-requirement-grid,
@@ -2529,6 +2638,10 @@ input {
   .fashion-section .products-grid.compact-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.85rem 0.7rem;
+  }
+
+  .home-browse-results .products-grid.compact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .fashion-chip-strip {
